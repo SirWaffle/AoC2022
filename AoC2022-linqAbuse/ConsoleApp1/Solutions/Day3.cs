@@ -18,8 +18,8 @@ namespace ConsoleApp1.Solutions
 
         override public void Part2()
         {
-            int count = -1, group = 0;
-            Console.WriteLine("total priority val: " + File.ReadAllText(InputFile!).Split('\n').GroupBy(x => { ++count; if (count % 3 == 0) ++group; return group; }).Select(x => x.ToList()[0].Trim().ToCharArray().ToList().Intersect(x.ToList()[1].Trim().ToCharArray().ToList().Intersect(x.ToList()[2].Trim().ToCharArray().ToList())).Select(x => ((int)x) - (Char.IsUpper(x) ? (((int)'A') - 27) : (((int)'a') - 1))).Sum()).Sum());
+            int count = 0;
+            Console.WriteLine("total priority val: " + File.ReadAllText(InputFile!).Split('\n').GroupBy(x => count++ / 3 ).Select(x => x.ToList()[0].Trim().ToCharArray().ToList().Intersect(x.ToList()[1].Trim().ToCharArray().ToList().Intersect(x.ToList()[2].Trim().ToCharArray().ToList())).Select(x => ((int)x) - (Char.IsUpper(x) ? (((int)'A') - 27) : (((int)'a') - 1))).Sum()).Sum());
         }
     }
 }
