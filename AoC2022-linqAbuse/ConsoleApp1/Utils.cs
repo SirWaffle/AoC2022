@@ -8,7 +8,7 @@ namespace ConsoleApp1
 {
     internal static class Utils
     {
-        public static void ForEach<T>(this IEnumerable<T> sequence, Action<T> action)
+        public static IEnumerable<T> LoopAll<T>(this IEnumerable<T> sequence, Action<T> action)
         {
             if (action == null)
             {
@@ -18,6 +18,8 @@ namespace ConsoleApp1
             {
                 action(item);
             }
+
+            return sequence;
         }
     }
 }
