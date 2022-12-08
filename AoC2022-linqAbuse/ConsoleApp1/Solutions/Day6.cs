@@ -11,6 +11,7 @@ namespace ConsoleApp1.Solutions
 {
     internal class Day6 : AbstractPuzzle
     {
+        //1 ;
         override public void Part1()
         {
             Console.WriteLine("First packet: " + (File.ReadAllText(InputFile!)
@@ -19,6 +20,7 @@ namespace ConsoleApp1.Solutions
                  ).ToList()[0].Count() + 4));
        }
 
+        //1 ;
         override public void Part2()
         {
             Console.WriteLine("First message: " + (File.ReadAllText(InputFile!)

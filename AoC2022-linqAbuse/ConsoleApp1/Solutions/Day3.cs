@@ -11,11 +11,13 @@ namespace ConsoleApp1.Solutions
 {
     internal class Day3 : AbstractPuzzle
     {
+        //1 ;
         override public void Part1()
         {
             Console.WriteLine("total priority val: " + File.ReadAllText(InputFile!).Split('\n').Select(x => x.Substring(0, x.Length / 2).ToCharArray().ToList().Intersect(x.Substring(x.Length / 2, x.Length / 2 ).ToCharArray().ToList()).Select(x => ((int)x) - (Char.IsUpper(x)?(((int)'A') - 27): (((int)'a') - 1))).Sum()).Sum());
         }
 
+        //1 ;
         override public void Part2()
         {
             int count = 0;

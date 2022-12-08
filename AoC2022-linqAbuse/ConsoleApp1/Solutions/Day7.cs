@@ -12,6 +12,8 @@ namespace ConsoleApp1.Solutions
 {
     internal class Day7 : AbstractPuzzle
     {
+
+        //11 ;'s
         public void Both()
         {
             Dictionary<string, Int64> fs = new Dictionary<string, Int64>() { { "", 0 } };
@@ -27,21 +29,6 @@ namespace ConsoleApp1.Solutions
                     ? new Task(() => curPath.RemoveAt(curPath.Count - 1))
                     : new Task(() => curPath.Add(cmd.Item2 == "/" ? "/root" : cmd.Item2))
                 ).All(x => { x.Start(); x.Wait(); return true; });
-
-            /*
-            //sum each dir
-            foreach (var cmd in splitLists[0].Select(x => (x.Item2, x.Item3.Contains("cd")? x.Item3.Split(" ")[2]: "ls")).ToList())
-            {
-                int ind = cmd.Item1;
-
-                if (cmd.Item2 == "ls")
-                    fs.Add(curPath.Aggregate((x, y) => x + (x == "/" ? "" : "/") + y), splitLists[1].SkipWhile(x => x.i < cmd.Item1).TakeWhile(x => x.i == ++ind).ToList().Where(x => x.Item3.Split(" ")[0] != "dir").Select(x => int.Parse(x.Item3.Split(" ")[0])).Sum());
-
-                else if (cmd.Item2 == "..")
-                    curPath.RemoveAt(curPath.Count - 1);
-                else
-                    curPath.Add(cmd.Item2 == "/" ? "/root" : cmd.Item2);                
-            }*/
 
             //sum directory sizes
             fs.OrderByDescending(x => x.Key.Where(x => x == '/').Count()).Where(x => x.Key != "").ToList().ForEach(x => fs[x.Key.Substring(0, x.Key.LastIndexOf('/'))] = fs[x.Key.Substring(0, x.Key.LastIndexOf('/'))] + fs[x.Key]);

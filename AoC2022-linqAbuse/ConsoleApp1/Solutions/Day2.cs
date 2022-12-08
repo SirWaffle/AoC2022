@@ -13,6 +13,7 @@ namespace ConsoleApp1.Solutions
             //todo
         }
 
+        //4 ;'s
         override public void Part2()
         {
             var scoresList = new (char shape, int score)[] { ('A', 1), ('B', 2), ('C', 3), ('X', 1), ('Y', 2), ('Z', 3) }.ToList();

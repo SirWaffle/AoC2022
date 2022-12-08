@@ -18,6 +18,7 @@ namespace ConsoleApp1.Solutions
             Both();
         }
 
+        //3 ;'s
         public void Both()
         {
             int count = 0;
