@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -19,8 +20,17 @@ namespace ConsoleApp1.Solutions
             //split into lists
             var splitLists = File.ReadAllText(InputFile!).Split("\n").Select((s, i) => s.Contains('$') ? (0, i, s.Trim()) : (1, i, s.Trim())).GroupBy(x => x.Item1).Select(x => (x.ToList().Where(x => x.Item1 == 0).ToList(), x.ToList().Where(x => x.Item1 == 1).ToList())).Select(x => x.Item1.Count != 0? x.Item1: x.Item2).ToList();
 
+            splitLists[0].Select(x => (x.Item2, x.Item3.Contains("cd") ? x.Item3.Split(" ")[2] : "ls")).ToList()
+                .Select(cmd => cmd.Item2 == "ls"
+                ? new Task(() => { int ind = cmd.Item1; fs.Add(curPath.Aggregate((x, y) => x + (x == "/" ? "" : "/") + y), splitLists[1].SkipWhile(x => x.i < cmd.Item1).TakeWhile(x => x.i == ++ind).ToList().Where(x => x.Item3.Split(" ")[0] != "dir").Select(x => int.Parse(x.Item3.Split(" ")[0])).Sum()); })
+                : cmd.Item2 == ".."
+                    ? new Task(() => curPath.RemoveAt(curPath.Count - 1))
+                    : new Task(() => curPath.Add(cmd.Item2 == "/" ? "/root" : cmd.Item2))
+                ).All(x => { x.Start(); x.Wait(); return true; });
+
+            /*
             //sum each dir
-            foreach(var cmd in splitLists[0].Select(x => (x.Item2, x.Item3.Contains("cd")? x.Item3.Split(" ")[2]: "ls")).ToList())
+            foreach (var cmd in splitLists[0].Select(x => (x.Item2, x.Item3.Contains("cd")? x.Item3.Split(" ")[2]: "ls")).ToList())
             {
                 int ind = cmd.Item1;
 
@@ -31,7 +41,7 @@ namespace ConsoleApp1.Solutions
                     curPath.RemoveAt(curPath.Count - 1);
                 else
                     curPath.Add(cmd.Item2 == "/" ? "/root" : cmd.Item2);                
-            }
+            }*/
 
             //sum directory sizes
             fs.OrderByDescending(x => x.Key.Where(x => x == '/').Count()).Where(x => x.Key != "").ToList().ForEach(x => fs[x.Key.Substring(0, x.Key.LastIndexOf('/'))] = fs[x.Key.Substring(0, x.Key.LastIndexOf('/'))] + fs[x.Key]);
