@@ -13,67 +13,31 @@ namespace ConsoleApp1.Solutions
     {
         public void Both()
         {
-            Dictionary<string, (Int64, List<(Int64, string)>)> fs = new Dictionary<string, (Int64, List<(Int64, string)>)>() { { "", (0, new()) } };
+            Dictionary<string, Int64> fs = new Dictionary<string, Int64>() { { "", 0 } };
             List<string> curPath = new List<string>() { };
 
             //split into lists
-            var splitLists = File.ReadAllText(InputFile!)
-                .Split("\n")
-                .Select((s, i) => s.Contains('$') ? (0, i, s.Trim()) : (1, i, s.Trim()))
-                .GroupBy(x => x.Item1)
-                .Select(x => (x.ToList()
-                                .Where(x => x.Item1 == 0).ToList(),
-                              x.ToList()
-                                .Where(x => x.Item1 == 1).ToList()))
-                .Select(x => x.Item1.Count != 0? x.Item1: x.Item2)
-                .ToList();
+            var splitLists = File.ReadAllText(InputFile!).Split("\n").Select((s, i) => s.Contains('$') ? (0, i, s.Trim()) : (1, i, s.Trim())).GroupBy(x => x.Item1).Select(x => (x.ToList().Where(x => x.Item1 == 0).ToList(), x.ToList().Where(x => x.Item1 == 1).ToList())).Select(x => x.Item1.Count != 0? x.Item1: x.Item2).ToList();
 
-            //create dir structure
-            foreach (var cmd in splitLists[0])
+            //sum each dir
+            foreach(var cmd in splitLists[0].Select(x => (x.Item2, x.Item3.Contains("cd")? x.Item3.Split(" ")[2]: "ls")).ToList())
             {
-                if(cmd.Item3.Contains("cd"))
-                {
-                    if (cmd.Item3.Split(" ")[2] == "..")
-                        curPath.RemoveAt(curPath.Count - 1);
-                    else
-                        curPath.Add(cmd.Item3.Split(" ")[2] == "/"? "/root": cmd.Item3.Split(" ")[2]); 
-                }
+                int ind = cmd.Item1;
 
-                string filepath = curPath.Aggregate((x, y) => x + (x == "/" ? "" : "/") + y);
-                (Int64, List<(Int64, string)>) entry;
-                if (!fs.TryGetValue(filepath, out entry))
-                    fs.Add(filepath, new(0, new()));
+                if (cmd.Item2 == "ls")
+                    fs.Add(curPath.Aggregate((x, y) => x + (x == "/" ? "" : "/") + y), splitLists[1].SkipWhile(x => x.i < cmd.Item1).TakeWhile(x => x.i == ++ind).ToList().Where(x => x.Item3.Split(" ")[0] != "dir").Select(x => int.Parse(x.Item3.Split(" ")[0])).Sum());
 
-                if (cmd.Item3.Contains("ls"))
-                {
-                    int ind = cmd.i;
-                    var filesInDir = splitLists[1].SkipWhile(x => x.i < cmd.i).TakeWhile(x => x.i == ++ind ).ToList();
-                    foreach (var file in filesInDir)
-                    {
-                        if (file.Item3.Split(" ")[0] != "dir")
-                        {
-                            entry.Item1 += int.Parse(file.Item3.Split(" ")[0]);
-                            entry.Item2.Add((int.Parse(file.Item3.Split(" ")[0]), file.Item3.Split(" ")[1]));
-                            fs[filepath] = entry;
-                        }
-                    }
-                }
+                else if (cmd.Item2 == "..")
+                    curPath.RemoveAt(curPath.Count - 1);
+                else
+                    curPath.Add(cmd.Item2 == "/" ? "/root" : cmd.Item2);                
             }
 
-            //calculate directory sizes
-            fs.OrderByDescending(x => x.Key.Where(x => x == '/').Count())
-              .Where(x => x.Key != "").ToList()
-              .ForEach(x => fs[x.Key.Substring(0, x.Key.LastIndexOf('/'))] = new(fs[x.Key.Substring(0, x.Key.LastIndexOf('/'))].Item1 + fs[x.Key].Item1,fs[x.Key.Substring(0, x.Key.LastIndexOf('/'))].Item2));
+            //sum directory sizes
+            fs.OrderByDescending(x => x.Key.Where(x => x == '/').Count()).Where(x => x.Key != "").ToList().ForEach(x => fs[x.Key.Substring(0, x.Key.LastIndexOf('/'))] = fs[x.Key.Substring(0, x.Key.LastIndexOf('/'))] + fs[x.Key]);
 
-            Console.WriteLine("sum: " + fs
-                .Where(x => x.Value.Item1 <= 100000)
-                .Sum(x => x.Value.Item1)
-            );
-
-            Console.WriteLine( "To Free: " + fs
-                .Where(x => x.Value.Item1 >= 30000000 - (70000000 - fs["/root"].Item1))
-                .Min(x => x.Value.Item1)
-            );
+            //answers
+            Console.WriteLine("sum: " + fs.Where(x => x.Value <= 100000).Sum(x => x.Value) + "  need to free: " + fs.Where(x => x.Value >= 30000000 - (70000000 - fs["/root"])).Min(x => x.Value) );
         }             
         //2104783 is correct sum
 
