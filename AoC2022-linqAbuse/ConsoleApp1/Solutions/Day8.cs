@@ -13,30 +13,19 @@ namespace ConsoleApp1.Solutions
 {
     internal class Day8 : AbstractPuzzle
     {
-
-
         public override void Part1()
         {
             //parse
             var ps = File.ReadAllText(InputFile!).Split("\n").SelectMany((s, y) => s.Trim().ToCharArray().Select((c, i) => (i, y, int.Parse(c.ToString()))));
 
-            //horiz
-            int max = 0;
-            var h = ps.GroupBy(x => x.i)
-                    .Select(x => { max = -1; return x.ToList().Where(x => { var t = x.Item3 > max; if (t) max = x.Item3; return t; }); })
-                    .Concat(
-                        ps.GroupBy(x => x.i).Select(x => { max = -1; return x.Reverse().ToList().Where(x => { var t = x.Item3 > max; if (t) max = x.Item3; return t; }); })
+            //gather non-visible trees
+            Func<bool, int, List<(int, int, int)>> SeeTreesFunc = (bool byXorY, int max) =>
+                ps.GroupBy(x => byXorY? x.i: x.y).Select(x => { max = -1; return x.ToList().Where(x => { var t = x.Item3 > max; if (t) max = x.Item3; return t; }); })
+                    .Concat( ps.GroupBy(x => x.i).Select(x => { max = -1; return x.Reverse().ToList().Where(x => { var t = x.Item3 > max; if (t) max = x.Item3; return t; }); })
                     ).SelectMany(x => x).ToList();
 
-            //vert
-            var v = ps.GroupBy(x => x.y)
-                    .Select(x => { max = -1; return x.ToList().Where(x => { var t = x.Item3 > max; if (t) max = x.Item3; return t; }); })
-                    .Concat(
-                        ps.GroupBy(x => x.y).Select(x => { max = -1; return x.Reverse().ToList().Where(x => { var t = x.Item3 > max; if (t) max = x.Item3; return t; }); })
-                    ).SelectMany(x => x).ToList();
-
-            //answer
-            Console.WriteLine("can see: " + (ps.Count() - h.Concat(v).Distinct().Count()));
+            //calc and answer
+            Console.WriteLine("can see: " + (ps.Count() - SeeTreesFunc(true, -1).Concat(SeeTreesFunc(false, -1)).Distinct().Count()));
         }             
 
         override public void Part2()

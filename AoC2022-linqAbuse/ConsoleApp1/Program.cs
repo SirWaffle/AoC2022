@@ -1,10 +1,10 @@
 ﻿using ConsoleApp1.Solutions;
 
 
-string inputFile = @"InputFiles/Input8_1.txt";
+string inputFile = @"InputFiles/Input9_1.txt";
 
 //for doing a specific puzzle:
-var puzz = new Day8();
+var puzz = new Day9();
 puzz.InputFile = inputFile;
 puzz.Part2();
 
