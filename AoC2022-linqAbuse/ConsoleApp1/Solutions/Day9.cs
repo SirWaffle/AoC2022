@@ -26,20 +26,17 @@ namespace ConsoleApp1.Solutions
 
         public void Both(int knots)
         {
-            var rope = new List<(int, int)>(new (int, int)[knots]);
+            var rope = new List<(int x, int y)>(new (int, int)[knots]);
 
-            Func<(int, int), (int, int)> calc = ((int, int) headMove) => {
-                rope[0] = (rope[0].Item1 + headMove.Item1, rope[0].Item2 + headMove.Item2);
+            Func<(int x, int y), (int x, int y)> calc = ((int x, int y) headMove) => {
+                rope[0] = (rope[0].x + headMove.x, rope[0].y + headMove.y);
 
-                for (int hi = 0; hi < rope.Count - 1; hi++)
+                for (int cur = 0; cur < rope.Count - 1; cur++)
                 {
-                    var knot = rope[hi];
-                    var nextKnot = rope[hi + 1];
-
-                    var diff = (knot.Item1 - nextKnot.Item1, knot.Item2 - nextKnot.Item2);
-                    if (Math.Max(Math.Abs(diff.Item1), Math.Abs(diff.Item2)) >= 2)
+                    var diff = (x: rope[cur].x - rope[cur + 1].x,y: rope[cur].y - rope[cur + 1].y);
+                    if (Math.Max(Math.Abs(diff.x), Math.Abs(diff.y)) >= 2)
                     {
-                        rope[hi + 1] = (nextKnot.Item1 + Math.Sign(diff.Item1), nextKnot.Item2 + Math.Sign(diff.Item2));
+                        rope[cur + 1] = (rope[cur + 1].x + Math.Sign(diff.x), rope[cur + 1].y + Math.Sign(diff.y));
                     }
                 }
                 return rope.Last();
