@@ -8,18 +8,41 @@ namespace ConsoleApp1
 {
     internal static class Utils
     {
-        public static IEnumerable<T> LoopAll<T>(this IEnumerable<T> sequence, Action<T> action)
+        public struct Point
         {
-            if (action == null)
+            public int x = 0;
+            public int y = 0;
+
+            public Point(int _x, int _y)
             {
-                throw new ArgumentNullException(nameof(action));
-            }
-            foreach (T item in sequence)
-            {
-                action(item);
+                x = _x;
+                y = _y;
             }
 
-            return sequence;
+            public static Point operator +(Point x, Point y)
+            {
+                return new Point(x.x + y.x, x.y + y.y);
+            }
+
+            public static Point operator -(Point x, Point y)
+            {
+                return new Point(x.x - y.x, x.y - y.y);
+            }
+
+            public static bool operator ==(Point x, Point y)
+            {
+                return x.x == y.x && x.y == y.y;
+            }
+
+            public static bool operator !=(Point x, Point y)
+            {
+                return !(x == y);
+            }
+
+            public override string ToString()
+            {
+                return "(" + x + "," + y + ")";
+            }
         }
     }
 }

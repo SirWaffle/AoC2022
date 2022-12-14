@@ -11,50 +11,13 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml.Schema;
 using static ConsoleApp1.Solutions.Day14;
+using static ConsoleApp1.Utils;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ConsoleApp1.Solutions
 {
     internal class Day12 : AbstractPuzzle
     {
-        public struct Point
-        {
-            public int x = 0;
-            public int y = 0;
-
-            public Point(int _x, int _y) 
-            {
-                x = _x;
-                y = _y;
-            }
-
-            public static Point operator +(Point x, Point y)
-            {
-                return new Point(x.x + y.x,  x.y + y.y);
-            }
-
-            public static Point operator -(Point x, Point y)
-            {
-                return new Point(x.x - y.x, x.y - y.y);
-            }
-
-            public static bool operator ==(Point x, Point y)
-            {
-                return x.x == y.x && x.y == y.y;
-            }
-
-            public static bool operator !=(Point x, Point y)
-            {
-                return !(x == y);
-            }
-
-            public override string ToString()
-            {
-                return "(" + x + "," + y + ")";
-            }
-        }
-
-
         override public void Part1()
         {
             Both(false);

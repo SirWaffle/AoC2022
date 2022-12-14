@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -11,6 +10,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml.Schema;
+using static ConsoleApp1.Utils;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ConsoleApp1.Solutions
@@ -22,12 +22,6 @@ namespace ConsoleApp1.Solutions
             Empty,
             Solid,
             Sand
-        }
-
-        public struct Point
-        {
-            public int x;
-            public int y;
         }
 
         public override void Part1()
