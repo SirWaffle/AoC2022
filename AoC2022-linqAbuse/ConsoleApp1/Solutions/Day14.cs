@@ -40,7 +40,7 @@ namespace ConsoleApp1.Solutions
             Both(true);
         }
 
-        //27902 too high
+
         public void Both(bool part2)
         { 
             //lets be lazy...
@@ -120,20 +120,15 @@ namespace ConsoleApp1.Solutions
                         {
                             if (tiles.TryGetValue(new Point() { x = activeSand.x + 1, y = activeSand.y + 1 }, out state) && state != State.Empty)
                             {
-                                if(part2)
-                                {
-                                    if(activeSand.x == sandSpawn.x && activeSand.y == sandSpawn.y)
-                                    {
-                                        tiles.Add(activeSand, State.Sand);
-                                        sandActive = false;
-                                        ++sandAtRest;
-                                        break;
-                                        //we done
-                                    }
-                                }
                                 tiles.Add(activeSand, State.Sand);
                                 sandActive = false;
                                 ++sandAtRest;
+
+                                if(part2 == true && activeSand.x == sandSpawn.x && activeSand.y == sandSpawn.y)
+                                {
+                                    break;
+                                    //we done
+                                }
                             }
                             else
                             {
