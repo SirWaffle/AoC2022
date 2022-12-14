@@ -1,12 +1,17 @@
 ﻿using ConsoleApp1.Solutions;
+using System.Diagnostics;
+using System.Net.Http.Headers;
 
-
-string inputFile = @"InputFiles/Input12_1_ex.txt";
+string inputFile = @"InputFiles/Input12_1.txt";
 
 //for doing a specific puzzle:
 var puzz = new Day12();
 puzz.InputFile = inputFile;
-puzz.Part1();
+
+var sw = Stopwatch.StartNew();
+puzz.Part2();
+sw.Stop();
+Console.WriteLine("execution time: " + sw.ElapsedMilliseconds);
 
 return;
 
