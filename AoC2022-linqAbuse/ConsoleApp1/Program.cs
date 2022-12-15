@@ -2,10 +2,10 @@
 using System.Diagnostics;
 using System.Net.Http.Headers;
 
-string inputFile = @"InputFiles/Input12_1.txt";
+string inputFile = @"InputFiles/Input15_1.txt";
 
 //for doing a specific puzzle:
-var puzz = new Day12();
+var puzz = new Day15();
 puzz.InputFile = inputFile;
 
 var sw = Stopwatch.StartNew();
