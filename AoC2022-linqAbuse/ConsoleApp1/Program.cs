@@ -2,14 +2,14 @@
 using System.Diagnostics;
 using System.Net.Http.Headers;
 
-string inputFile = @"InputFiles/Input15_1.txt";
+string inputFile = @"InputFiles/Input16_1_ex.txt";
 
 //for doing a specific puzzle:
-var puzz = new Day15();
+var puzz = new Day16();
 puzz.InputFile = inputFile;
 
 var sw = Stopwatch.StartNew();
-puzz.Part2();
+puzz.Part1();
 sw.Stop();
 Console.WriteLine("execution time: " + sw.ElapsedMilliseconds);
 

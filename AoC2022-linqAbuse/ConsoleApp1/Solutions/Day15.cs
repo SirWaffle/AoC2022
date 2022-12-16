@@ -109,10 +109,6 @@ namespace ConsoleApp1.Solutions
         override public void Part2()
         {
             Dictionary<Point64, SensorData> tiles = new();
-            Dictionary<Point64, State> canSeeTiles = new();
-
-            Point64 minBound = new Point64() { x = 0, y = 0 };
-            Point64 maxBound = new Point64() { x = 4000000, y = 4000000 };
 
             //parse...
             var lines = File.ReadAllText(InputFile!).Split("\r\n").Select(x => x.Trim().Split("="));
@@ -154,7 +150,7 @@ namespace ConsoleApp1.Solutions
             {
                 curPoint.x = minBound.x;
 
-                for (; curPoint.x <= maxBound.x;)// curPoint.x+= stepX)
+                for (; curPoint.x <= maxBound.x;)
                 {
                     collided = false;
 
