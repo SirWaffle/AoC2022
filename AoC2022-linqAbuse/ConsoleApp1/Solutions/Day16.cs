@@ -342,7 +342,7 @@ namespace ConsoleApp1.Solutions
 
             //lets jsut BFS this in its entireity
             valvesWithFlow = simplifiedValveGrid.Where(x => x.Value.flowRate > 0).Select(x => x.Value).ToList();
-            var maxScore = BFSpart2(simplifiedValveGrid, valvesWithFlow, "AA", String.Empty, false);
+            var maxScore = BFSpart2(simplifiedValveGrid, valvesWithFlow, "AA");
 
             Console.WriteLine("max score: " + maxScore.flowScore);
 
@@ -352,14 +352,23 @@ namespace ConsoleApp1.Solutions
             }
         }
 
-
-
-
-        public ValvePath BFSpart2(Dictionary<String, ValveCell> valves, List<ValveCell> valvesWithFlow, string startValve, string endValve, bool findShortestPath)
+        public class MultiPath
         {
-            int totalActionPoints = 30;
+            public ValveCell[] valveCell = new ValveCell[2];
+            public int[] steps = new int[2];
+            public int flowScore = 0;
+            public int potentialPoints = 0;
+            public HashSet<ValvePath> path = new();
+            public HashSet<ValveCell> openedValves = new();
 
-            List<ValvePath> search = new();
+            public MultiPath() { }
+        }
+
+        public MultiPath BFSpart2(Dictionary<String, ValveCell> valves, List<ValveCell> valvesWithFlow, string startValve)
+        {
+            int totalActionPoints = 26;
+
+            List<MultiPath> search = new();
 
             //remove search heads that are lower in score than the best
             Dictionary<string, (int steps, int score)> maxPerCell = new();
@@ -371,17 +380,20 @@ namespace ConsoleApp1.Solutions
             start.valveCell = valves[startValve];
             start.steps = 0;
             start.flowScore = 0;
-            start.potentialPoints = valvesWithFlow.Select(x => x.flowRate).Aggregate((total, next) => total + (next * 29));
+            start.potentialPoints = valvesWithFlow.Select(x => x.flowRate).Aggregate((total, next) => total + (next * (totalActionPoints - 1)));
             start.path = new() { start };
 
-            search.Add(start);
+            MultiPath startMP = new();
+            startMP.valveCell[0] = valves[startValve];
+            startMP.valveCell[1] = valves[startValve];
+            startMP.flowScore = 0;
+            startMP.potentialPoints = valvesWithFlow.Select(x => x.flowRate).Aggregate((total, next) => total + (next * (totalActionPoints - 1)));
+            startMP.path = new() { start };
 
-            //for findin gbest path isntead of best score
-            ValveCell? end = null;
-            if (endValve != string.Empty)
-                end = valves[endValve];
+            search.Add(startMP);
 
-            ValvePath maxScore = new();
+
+            MultiPath maxScore = new();
 
             int searches = 0;
 
@@ -391,47 +403,36 @@ namespace ConsoleApp1.Solutions
                 if (searches % 1000 == 0)
                     Console.WriteLine("----iters: {0}   paths remaining: {1}      ", searches, search.Count);
 
-
-                ValvePath cur = search[0];
+                //lets just find the next step of the lowest step valued path between the two
+                MultiPath cur = search[0];
                 search.RemoveAt(0);
 
-                //found our shortest path
-                if (end != null && cur.valveCell == end)
-                {
-                    Console.WriteLine("shortest path from " + start.valveCell.Valve + " to " + end.Valve + " is " + cur.steps);
-                    Thread.Sleep(10);
-                    return cur;
-                }
+                int playerIndex = cur.steps[0] <= cur.steps[1] ? 0 : 1;
+                int otherIndex = cur.steps[0] <= cur.steps[1] ? 1 : 0;
 
                 //open valves
-                if (!findShortestPath)
+                if (cur.valveCell[playerIndex].flowRate > 0 && !cur.openedValves.Any(x => x.Valve == cur.valveCell[playerIndex].Valve))
                 {
-                    if (cur.valveCell.flowRate > 0 && !cur.openedValves.Any(x => x.Valve == cur.valveCell.Valve))
-                    {
-                        cur.openedValves = new(cur.openedValves) { cur.valveCell };
-                        cur.steps += 1;
-                        cur.flowScore = cur.flowScore + (cur.valveCell.flowRate * (totalActionPoints - cur.steps));
-                    }
+                    cur.openedValves = new(cur.openedValves) { cur.valveCell[playerIndex] };
+                    cur.steps[playerIndex] += 1;
+                    cur.flowScore = cur.flowScore + (cur.valveCell[playerIndex].flowRate * (totalActionPoints - cur.steps[playerIndex]));
                 }
 
 
                 //reduce search space by dropping worse paths
-                (int steps, int score) maxScoreInCell = maxPerCell[cur.valveCell.Valve];
-                if (cur.steps >= maxScoreInCell.steps && cur.flowScore < maxScoreInCell.score)
+                (int steps, int score) maxScoreInCell = maxPerCell[cur.valveCell[playerIndex].Valve];
+                if (cur.steps[playerIndex] >= maxScoreInCell.steps && cur.flowScore < maxScoreInCell.score)
                 {
                     continue;
                 }
                 else
                 {
-                    maxPerCell[cur.valveCell.Valve] = (cur.steps, cur.flowScore);
+                    maxPerCell[cur.valveCell[playerIndex].Valve] = (cur.steps[playerIndex], cur.flowScore);
                 }
 
                 //also early out if theres no potential to catch up based on projected highest possible score remaining
-                if (!findShortestPath)
-                {
-                    if (cur.potentialPoints + cur.flowScore < maxScore.flowScore)
+                if (cur.potentialPoints + cur.flowScore < maxScore.flowScore)
                         continue;
-                }
 
                 //update max score / best path
                 if (maxScore.flowScore < cur.flowScore)
@@ -447,62 +448,60 @@ namespace ConsoleApp1.Solutions
 
 
                 //add available paths in valid range...
-                for (int i = 0; i < cur.valveCell.connectedValves.Count; ++i)
+                for (int i = 0; i < cur.valveCell[playerIndex].connectedValves.Count; ++i)
                 {
-                    ValveCell next = valves[cur.valveCell.connectedValves[i].valve];
+                    ValveCell next = valves[cur.valveCell[playerIndex].connectedValves[i].valve];
 
                     //if we opened the valve, no need to go there
-                    if (!findShortestPath)
-                    {
                         if (cur.openedValves.Contains(next))
                             continue;
-                    }
 
-                    //sopecial case for shoprtest path
-                    if (findShortestPath)
-                    {
-                        //not allowed to cross over where we already searched
-                        if (cur.path != null && cur.path.Any(x => x.valveCell.Valve == next.Valve))
-                            continue;
-                    }
 
-                    if (!findShortestPath)
-                    {
                         //prevent too many steps
-                        if (cur.steps + cur.valveCell.connectedValves[i].traversalCost > totalActionPoints)
+                        if (cur.steps[playerIndex] + cur.valveCell[playerIndex].connectedValves[i].traversalCost > totalActionPoints)
                             continue;
-                    }
+
 
                     //add new path
-                    ValvePath newPath = new();
-                    newPath.valveCell = next;
+                    MultiPath newPath = new();
+                    newPath.valveCell[otherIndex] = cur.valveCell[otherIndex];
+                    newPath.valveCell[playerIndex] = next;
                     newPath.path = new(cur.path!);
                     newPath.openedValves = new(cur.openedValves);
-                    newPath.steps = cur.steps + cur.valveCell.connectedValves[i].traversalCost;
+                    newPath.steps[playerIndex] = cur.steps[playerIndex] + cur.valveCell[playerIndex].connectedValves[i].traversalCost;
+                    newPath.steps[otherIndex] = cur.steps[otherIndex];
                     newPath.flowScore = cur.flowScore;
-                    newPath.path.Add(newPath);
+
+                    ValvePath traveled = new();
+                    traveled.valveCell = next;
+                    traveled.steps = newPath.steps[playerIndex];
+                    traveled.flowScore = newPath.flowScore;
+                    newPath.path.Add(traveled);
 
 
                     //insert based on best scores, faster, helps eliminate paths, finds shortest route
-                    if (findShortestPath)
+                    bool added = false;
+
+                    int potentialPoints = valvesWithFlow.Except(newPath.openedValves).Select(x => x.flowRate).Aggregate((total, next) => total + (next * (26 - newPath.steps[playerIndex])));
+                    newPath.potentialPoints = potentialPoints;
+
+                    //steps, then score
+                    for (int j = 0; j < search.Count && added == false; ++j)
                     {
-                        bool added = false;
-                        for (int j = 0; j < search.Count && added == false; ++j)
+                        int sortScoreA = search[j].potentialPoints;
+                        int sortScoreB = potentialPoints;
+                        if (sortScoreA <= sortScoreB)
                         {
-                            if (search[j].steps > newPath.steps)
+                            if (search[j].flowScore <= newPath.flowScore)
                             {
                                 added = true;
                                 search.Insert(j, newPath);
                             }
                         }
-                        if (!added)
-                        {
-                            search.Add(newPath);
-                        }
                     }
-                    else //prioritize score...
+                    if (!added)
                     {
-                        InsertSearchNodeByScorepart2(search, valvesWithFlow, newPath);
+                        search.Add(newPath);
                     }
                 }
             }
@@ -510,33 +509,6 @@ namespace ConsoleApp1.Solutions
             return maxScore;
         }
 
-
-        void InsertSearchNodeByScorepart2(List<ValvePath> search, List<ValveCell> valvesWithFlow, ValvePath newPath)
-        {
-            bool added = false;
-
-            int potentialPoints = valvesWithFlow.Except(newPath.openedValves).Select(x => x.flowRate).Aggregate((total, next) => total + (next * (30 - newPath.steps)));
-            newPath.potentialPoints = potentialPoints;
-
-            //steps, then score
-            for (int j = 0; j < search.Count && added == false; ++j)
-            {
-                int sortScoreA = search[j].potentialPoints;
-                int sortScoreB = potentialPoints;
-                if (sortScoreA <= sortScoreB)
-                {
-                    if (search[j].flowScore <= newPath.flowScore)
-                    {
-                        added = true;
-                        search.Insert(j, newPath);
-                    }
-                }
-            }
-            if (!added)
-            {
-                search.Add(newPath);
-            }
-        }
 
     }
 
