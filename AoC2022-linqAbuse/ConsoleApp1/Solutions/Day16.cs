@@ -14,8 +14,10 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml.Schema;
+using WpfPermutations;
 using static ConsoleApp1.Solutions.Day14;
 using static ConsoleApp1.Solutions.Day15;
+using static ConsoleApp1.Solutions.Day16;
 using static ConsoleApp1.Utils;
 using static System.Net.Mime.MediaTypeNames;
 
@@ -340,15 +342,90 @@ namespace ConsoleApp1.Solutions
             }
 
 
-            //lets jsut BFS this in its entireity
+            //lets be smarter than path finding...
+            //we want every permutation of paths that add up to 26 steps
+            //lets jsut brute force the combos, than worry about ordering them...
             valvesWithFlow = simplifiedValveGrid.Where(x => x.Value.flowRate > 0).Select(x => x.Value).ToList();
-            var maxScore = BFSpart2(simplifiedValveGrid, valvesWithFlow, "AA");
 
-            Console.WriteLine("max score: " + maxScore.flowScore);
+            List<List<(int steps, ValveCell)>> possible = new();
+            for (int i = 0; i < simplifiedValveGrid["AA"].connectedValves.Count; i++) 
+            {            
+                ValveCell startCell = simplifiedValveGrid[simplifiedValveGrid["AA"].connectedValves[i].valve];
+                int startSteps = simplifiedValveGrid["AA"].connectedValves[i].traversalCost;
 
-            foreach (var p in maxScore.path)
+               
+                int steps = startSteps;
+
+                List<(int steps, ValveCell)> curPath = new();
+                List<ValveCell> avail = new(valvesWithFlow);
+                avail.Remove(startCell);
+                ComboCalculator(valvesWithFlow, startCell, curPath, avail, steps, possible, 30);
+            }
+
+            int permutes = 0;
+            for(int i =0; i < possible.Count; i++)
             {
-                Console.WriteLine(p.valveCell.Valve + "  at: " + p.steps + "    score: " + p.flowScore);
+                int fact = 1;
+                for(int j = 1; j <= possible[i].Count; j++)
+                {
+                    fact *= j;
+                }
+                permutes += fact;
+            }
+
+
+
+            Console.WriteLine("Found total: " + possible.Count + "  permutations: " + permutes);
+            int maxScore = 0;
+            for (int i = 0; i < possible.Count; i++)
+            {
+                var values = possible[i].Select(x => x).ToArray();
+
+                //Console.WriteLine("Processing permuts for: " + i);
+                Permutations.ForAllPermutation(values, (vals) =>
+                {
+                    int score = 0;
+                    for(int j = 0; j < vals.Length; j++)
+                    {
+                        score += (vals[j].Item2.flowRate * (30 - vals[j].steps));
+                    }
+                    if (score > maxScore)
+                        maxScore = score;
+                    return false;
+                });
+            }
+
+            Console.WriteLine("Max value found: " + maxScore);
+        }
+
+        public void ComboCalculator(List<ValveCell> valves, ValveCell from, List<(int steps, ValveCell)> curPath, List<ValveCell> avail, int steps, List<List<(int step, ValveCell)>> found, int stepLimit)
+        {
+            if(avail.Count == 0)
+            {
+                found.Add(curPath);
+            }
+
+            bool branched = false;
+            foreach(var cell in avail)
+            {
+                int cost = from.connectedValves.Where(x => x.valve == cell.Valve).First().traversalCost;
+
+                if(steps + cost > stepLimit)
+                {
+                    continue;
+                }
+
+                branched = true;
+                List<ValveCell> adjusted = new(avail);
+                adjusted.Remove(cell);
+                List<(int steps, ValveCell)> newPath = new(curPath);
+                newPath.Add((steps, cell));
+                ComboCalculator(valves, cell, newPath, adjusted, steps + cost, found, stepLimit);
+            }
+
+            if(!branched)
+            {
+                found.Add(curPath);
             }
         }
 
