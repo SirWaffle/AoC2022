@@ -147,10 +147,8 @@ namespace ConsoleApp1.Solutions
 
             search.Add(start);
 
-            //for findin gbest path 
-            ValveCell? end = null;
-            if (endValve != string.Empty)
-                end = valves[endValve];
+            //for finding best path 
+            ValveCell end = valves[endValve];
 
             while (search.Count > 0)
             {
@@ -174,7 +172,6 @@ namespace ConsoleApp1.Solutions
                     if (cur.path != null && cur.path.Any(x => x.valveCell.Valve == next.Valve))
                         continue;
 
-
                     //add new path
                     ValvePath newPath = new();
                     newPath.valveCell = next;
@@ -182,7 +179,7 @@ namespace ConsoleApp1.Solutions
                     newPath.steps = cur.steps + cur.valveCell.connectedValves[i].traversalCost;
                     newPath.path.Add(newPath);
 
-                    //insert based on best scores, faster, helps eliminate paths, finds shortest route
+                    //insert based on best scores, faster, helps eliminate paths, finds shortest route (makes this BFS)
                     bool added = false;
                     for (int j = 0; j < search.Count && added == false; ++j)
                     {
@@ -203,9 +200,6 @@ namespace ConsoleApp1.Solutions
         }
 
      
-
-
-
 
 
         override public async void Part2()
@@ -257,7 +251,7 @@ namespace ConsoleApp1.Solutions
             valvesWithFlow = simplifiedValveGrid.Where(x => x.Value.flowRate > 0).Select(x => x.Value).ToList();
 
             List<Task> taskList = new();
-            ConcurrentQueue<(int score, List<(int steps, bool wasEle, ValveCell)>)> possible = new();
+            ConcurrentQueue<List<(int steps, bool wasEle, ValveCell)>> possible = new();
             for (int playerStartInd = 0; playerStartInd < simplifiedValveGrid["AA"].connectedValves.Count; playerStartInd++) 
             {
                 for (int eleStartInd = 0; eleStartInd < simplifiedValveGrid["AA"].connectedValves.Count; eleStartInd++)
@@ -289,20 +283,19 @@ namespace ConsoleApp1.Solutions
             Task maxer = new Task(() => {
                 for(; ;)
                 {
-                    (int score, List<(int steps, bool wasEle, ValveCell)>) possibleList;
+                    List<(int steps, bool wasEle, ValveCell valve)>? possibleList;
                     while (possible.TryDequeue(out possibleList))
                     {
 
                         int score = 0;
-                        for (int j = 0; j < possibleList.Item2.Count; j++)
+                        for (int j = 0; j < possibleList.Count; j++)
                         {
-                            score += (possibleList.Item2[j].Item3.flowRate * ((stepCount + 1) - possibleList.Item2[j].steps));
+                            score += (possibleList[j].valve.flowRate * ((stepCount + 1) - possibleList[j].steps));
                         }
                         if (score > maxScore)
                         {
                             maxScore = score;
-                            Console.WriteLine("new max found: " + maxScore);
-                            Console.WriteLine("Path: " + possibleList.Item2.Select(x => x.Item3.Valve + "(" + x.steps + ", " + x.wasEle + ")").Aggregate((a, b) => a + "   " + b) + "  score: ");
+                            Console.WriteLine("new best path: " + possibleList.Select(x => x.valve.Valve + "(" + x.steps + ", " + x.wasEle + ")").Aggregate((a, b) => a + "   " + b) + "  score: " + maxScore);
                             Thread.Sleep(1);
                         }
                     }
@@ -322,27 +315,14 @@ namespace ConsoleApp1.Solutions
             await maxer;
 
             Console.WriteLine("Max value found: " + maxScore);
-            //2992 too low
         }
 
         public void ValvePathMultiPlayer(ValveCell playerCell, ValveCell eleCell, List<(int steps, bool wasEle, ValveCell)> curPath, List<ValveCell> avail, int playerSteps, 
-            int eleSteps, ConcurrentQueue<(int score, List<(int steps, bool wasEle, ValveCell)>)> found, int stepLimit)
+            int eleSteps, ConcurrentQueue<List<(int steps, bool wasEle, ValveCell)>> found, int stepLimit)
         {
             if (avail.Count == 0)
             {
-                int score = 0;
-                for (int j = 0; j < curPath.Count; j++)
-                {
-                    score += (curPath[j].Item3.flowRate * ((stepLimit + 1) - curPath[j].steps));
-                }
-                (int score, List<(int steps, bool wasEle, ValveCell)>) peek;
-                found.TryPeek(out peek);
-                if (peek.score < score)
-                {
-                    //found.TryDequeue(out _);
-                    found.Enqueue(new(score, curPath));
-                }
-                return;
+                found.Enqueue(curPath);
             }
 
             bool isEle = eleSteps < playerSteps ? true : false;
@@ -361,9 +341,7 @@ namespace ConsoleApp1.Solutions
                     cost = playerCell.connectedValves.Where(x => x.valve == cell.Valve).First().traversalCost;
 
                 if (curStep + cost + 1 > stepLimit)
-                {
                     continue;
-                }
 
                 branched = true;
                 List<ValveCell> adjusted = new(avail);
@@ -394,27 +372,11 @@ namespace ConsoleApp1.Solutions
 
             if(!branched)
             {
-                int score = 0;
-                for (int j = 0; j < curPath.Count; j++)
-                {
-                    score += (curPath[j].Item3.flowRate * ((stepLimit + 1) - curPath[j].steps));
-                }
-                (int score, List<(int steps, bool wasEle, ValveCell)>) peek;
-                found.TryPeek(out peek);
-                if (peek.score < score)
-                {
-                    //found.TryDequeue(out _);
-                    found.Enqueue(new(score, curPath));
-                }
+                found.Enqueue(curPath);
             }
         }
 
 
 
-
     }
-
-
-
-
 }
