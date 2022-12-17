@@ -45,7 +45,7 @@ namespace ConsoleApp1.Solutions
 
             foreach(var line in lines)
             {
-                var points = line.Split("->").Select(x => x.Trim().Split(',').Select(x=> x.Trim()).ToList()).Select(x=> new Point() { x = int.Parse(x[0]), y = int.Parse(x[1]) }).ToList();
+                var points = line.Split("->").Select(x => x.Trim().Split(',').Select(x=> x.Trim()).ToList()).Select(x=> new Point() { X = int.Parse(x[0]), Y = int.Parse(x[1]) }).ToList();
 
                 for (int i =0; i < points.Count - 1; i++)
                 {
@@ -57,26 +57,26 @@ namespace ConsoleApp1.Solutions
                         if (!tiles.ContainsKey(start))
                             tiles.Add(start, State.Solid);
 
-                        if (start.x == end.x && start.y == end.y)
+                        if (start.X == end.X && start.Y == end.Y)
                             break;
 
-                        if (start.x != end.x)
-                            start.x += Math.Sign(end.x - start.x);
-                        if(start.y != end.y)
-                            start.y += Math.Sign(end.y - start.y);
+                        if (start.X != end.X)
+                            start.X += Math.Sign(end.X - start.X);
+                        if(start.Y != end.Y)
+                            start.Y += Math.Sign(end.Y - start.Y);
                     }
                 }
             }
 
             //things to track...
-            Point sandSpawn = new Point() { x = 500, y = 0 };
-            Point minBound = new Point() { x = 99999, y = 0 };
-            Point maxBound = new Point() { x = -9999, y = -9999 };
+            Point sandSpawn = new Point() { X = 500, Y = 0 };
+            Point minBound = new Point() { X = 99999, Y = 0 };
+            Point maxBound = new Point() { X = -9999, Y = -9999 };
 
-            minBound.x = tiles.Min(x => x.Key.x);
-            minBound.y = tiles.Min(x => x.Key.y);
-            maxBound.x = tiles.Max(x => x.Key.x);
-            maxBound.y = tiles.Max(x => x.Key.y);
+            minBound.X = tiles.Min(x => x.Key.X);
+            minBound.Y = tiles.Min(x => x.Key.Y);
+            maxBound.X = tiles.Max(x => x.Key.X);
+            maxBound.Y = tiles.Max(x => x.Key.Y);
 
             //simulate
             Point activeSand = sandSpawn;
@@ -98,7 +98,7 @@ namespace ConsoleApp1.Solutions
                 if (part2 && sandActive == true)
                 {
 
-                    if (activeSand.y == maxBound.y + 1)
+                    if (activeSand.Y == maxBound.Y + 1)
                     {
                         tiles.Add(activeSand, State.Sand);
                         sandActive = false;
@@ -108,17 +108,17 @@ namespace ConsoleApp1.Solutions
 
                 if(sandActive == true)
                 { 
-                    if(tiles.TryGetValue(new Point() { x = activeSand.x, y = activeSand.y + 1}, out State state) && state != State.Empty)
+                    if(tiles.TryGetValue(new Point() { X = activeSand.X, Y = activeSand.Y + 1}, out State state) && state != State.Empty)
                     {
-                        if (tiles.TryGetValue(new Point() { x = activeSand.x - 1, y = activeSand.y + 1 }, out state) && state != State.Empty)
+                        if (tiles.TryGetValue(new Point() { X = activeSand.X - 1, Y = activeSand.Y + 1 }, out state) && state != State.Empty)
                         {
-                            if (tiles.TryGetValue(new Point() { x = activeSand.x + 1, y = activeSand.y + 1 }, out state) && state != State.Empty)
+                            if (tiles.TryGetValue(new Point() { X = activeSand.X + 1, Y = activeSand.Y + 1 }, out state) && state != State.Empty)
                             {
                                 tiles.Add(activeSand, State.Sand);
                                 sandActive = false;
                                 ++sandAtRest;
 
-                                if(part2 == true && activeSand.x == sandSpawn.x && activeSand.y == sandSpawn.y)
+                                if(part2 == true && activeSand.X == sandSpawn.X && activeSand.Y == sandSpawn.Y)
                                 {
                                     break;
                                     //we done
@@ -126,26 +126,26 @@ namespace ConsoleApp1.Solutions
                             }
                             else
                             {
-                                activeSand.y += 1;
-                                activeSand.x += 1;
+                                activeSand.Y += 1;
+                                activeSand.X += 1;
                             }
                         }
                         else
                         {
-                            activeSand.y += 1;
-                            activeSand.x -= 1;
+                            activeSand.Y += 1;
+                            activeSand.X -= 1;
                         }
                     }
                     else
                     {
-                        activeSand.y += 1;
+                        activeSand.Y += 1;
                     }
                 }
 
                 //exit case when sand hits the void
                 if (part2 == false)
                 {
-                    if (activeSand.x > maxBound.x || activeSand.x < minBound.x || activeSand.y > maxBound.y)
+                    if (activeSand.X > maxBound.X || activeSand.X < minBound.X || activeSand.Y > maxBound.Y)
                     {
                         break;
                     }

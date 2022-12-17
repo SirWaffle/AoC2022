@@ -10,28 +10,28 @@ namespace ConsoleApp1
     {
         public struct Point64
         {
-            public Int64 x = 0;
-            public Int64 y = 0;
+            public Int64 X = 0;
+            public Int64 Y = 0;
 
             public Point64(Int64 _x, Int64 _y)
             {
-                x = _x;
-                y = _y;
+                X = _x;
+                Y = _y;
             }
 
             public static Point64 operator +(Point64 x, Point64 y)
             {
-                return new Point64(x.x + y.x, x.y + y.y);
+                return new Point64(x.X + y.X, x.Y + y.Y);
             }
 
             public static Point64 operator -(Point64 x, Point64 y)
             {
-                return new Point64(x.x - y.x, x.y - y.y);
+                return new Point64(x.X - y.X, x.Y - y.Y);
             }
 
             public static bool operator ==(Point64 x, Point64 y)
             {
-                return x.x == y.x && x.y == y.y;
+                return x.X == y.X && x.Y == y.Y;
             }
 
             public static bool operator !=(Point64 x, Point64 y)
@@ -41,34 +41,34 @@ namespace ConsoleApp1
 
             public override string ToString()
             {
-                return "(" + x + "," + y + ")";
+                return "(" + X + "," + Y + ")";
             }
         }
 
         public struct Point
         {
-            public int x = 0;
-            public int y = 0;
+            public int X = 0;
+            public int Y = 0;
 
             public Point(int _x, int _y)
             {
-                x = _x;
-                y = _y;
+                X = _x;
+                Y = _y;
             }
 
             public static Point operator +(Point x, Point y)
             {
-                return new Point(x.x + y.x, x.y + y.y);
+                return new Point(x.X + y.X, x.Y + y.Y);
             }
 
             public static Point operator -(Point x, Point y)
             {
-                return new Point(x.x - y.x, x.y - y.y);
+                return new Point(x.X - y.X, x.Y - y.Y);
             }
 
             public static bool operator ==(Point x, Point y)
             {
-                return x.x == y.x && x.y == y.y;
+                return x.X == y.X && x.Y == y.Y;
             }
 
             public static bool operator !=(Point x, Point y)
@@ -78,7 +78,7 @@ namespace ConsoleApp1
 
             public override string ToString()
             {
-                return "(" + x + "," + y + ")";
+                return "(" + X + "," + Y + ")";
             }
         }
     }

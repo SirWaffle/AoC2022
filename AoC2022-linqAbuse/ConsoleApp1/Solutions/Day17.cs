@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
-using System.Drawing;
+using System.Data;
+using static ConsoleApp1.Utils;
 
 namespace ConsoleApp1.Solutions
 {
@@ -36,35 +37,39 @@ namespace ConsoleApp1.Solutions
 
         class Board
         {
-            public const int Width = 7;
-            public static int FLoorHeight = 0;
+            public const Int64 Width = 7;
+            public static Int64 FLoorHeight = 0;
 
-            public int w { get { return Width; } }
+            public Int64 w { get { return Width; } }
 
-            public int CurMaxHeight = FLoorHeight;
-            public int[] Heights = new int[Width];
+            public Int64 CurMaxHeight = FLoorHeight;
+            public List<Int64[]> Heights = new List<Int64[]>();
 
-            public bool CheckCollision(Point pos, RockFormation rock)
+            public Board()
+            {
+                Heights.Add(new Int64[7] { 1,1,1,1,1,1,1});
+            }
+
+            public bool CheckCollision(Point64 pos, RockFormation rock)
             {
                 bool collided = false;
 
-                int yCheck = pos.Y - (rock.wh.Y - 1);
+                Int64 yCheck = pos.Y - (rock.wh.Y - 1);
                 if (yCheck <= CurMaxHeight)
                 {
-                    for (int y = pos.Y; y > pos.Y - rock.wh.Y && !collided; y--)
+                    for (Int64 y = pos.Y; y > pos.Y - rock.wh.Y && !collided; y--)
                     {
-                        for (int x = pos.X; x < pos.X + rock.wh.X && !collided; x++)
+                        for (Int64 x = pos.X; x < pos.X + rock.wh.X && !collided; x++)
                         {
-                            //drop y by one since we're looking into the future
                             //scan across width and see if theres a possible overlap
-                            if (Heights[x] >= y)
+                            if (Heights.Count > y && Heights[(int)y][x] > 0) //y - 1 sorta works
                             {
                                 //possible overlap, see if this part of the rock is solid or not...
                                 //grab index into rock shape...
-                                int rockX = x - (pos.X);
-                                int rockY = Math.Abs(y - (pos.Y));
+                                Int64 rockX = x - (pos.X);
+                                Int64 rockY = Math.Abs(y - (pos.Y));
 
-                                collided = rock.IsSolidAtPoint(rockX, rockY);
+                                collided = rock.IsSolidAtPoint((int)rockX, (int)rockY);
                             }
 
                         }//x
@@ -74,23 +79,38 @@ namespace ConsoleApp1.Solutions
                 return collided;
             }
 
-            public void AddRestingRock(Point pos, RockFormation rock)
+            public void AddRestingRock(Point64 pos, RockFormation rock)
             {
-                //update the heightmap based on rock formation
-                for (int y = 0; y < rock.wh.Y; y++)
+                for (Int64 y = pos.Y; y > pos.Y - rock.wh.Y; y--)
                 {
-                    for (int x = 0; x < rock.wh.X; x++)
+                    for (Int64 x = pos.X; x < pos.X + rock.wh.X; x++)
                     {
-                        bool isSolid = rock.IsSolidAtPoint(x, y);
+                        while (Heights.Count <= y)
+                            Heights.Add(new Int64[Width]);
+
+                        Int64 rockX = x - (pos.X);
+                        Int64 rockY = Math.Abs(y - (pos.Y));
+
+                        bool isSolid = rock.IsSolidAtPoint((int)rockX, (int)rockY);
                         if (isSolid)
                         {
-                            Heights[pos.X + x] = Math.Max(Heights[pos.X + x], pos.Y - y);
+                            Heights[(int)y][x] = Math.Max(Heights[(int)y][x], pos.Y); //y is the actual y pos, but pos.y gives good variationm to see diff rocks
                         }
-                    }
-                }
+                    }//x
+                }//y
 
                 //update heightmap and max height
-                CurMaxHeight = Heights.ToList().Max();
+                CurMaxHeight = Heights.Last().ToList().Max();
+                CurMaxHeight = Heights.Count;
+            }
+
+            public void DrawBoard()
+            {
+                var rev = Heights.Reverse<Int64[]>().ToList();
+                foreach (var row in rev)
+                {
+                    Console.WriteLine(row.ToList().Select(x => x.ToString()).Aggregate((a,b) => a + " " + b));
+                }
             }
         }
 
@@ -113,72 +133,72 @@ namespace ConsoleApp1.Solutions
 
             var rocks = CreateRockFormations();
 
-            int numRocksToDrop = 2022;
+            Int64 numRocksToDrop = 2022;
+            numRocksToDrop = 1000000000000;
             //numRocksToDrop = 11; //ten is the test, need to count heights though...
-            //heights for each col in sample after 10 are:
-            //14  14  13  13  17  15  0
-
-            //works up to rock 7 ( 7 being 0 based ) -- the apperance of the straight line again...
-            //rock 8 is landing wrong...
-
-            //3106 too low, but the answer to someoneelses puzzle...
-            //3400 too high
-            //3190, too low
 
             Board board = new();
 
-            Point curRockPos = new Point();
-            int curGasPos = 0;
+            Point64 curRockPos = new Point64();
+            Int64 curGasPos = 0;
 
-            for(int curRockNum = 0; curRockNum < numRocksToDrop ; ++curRockNum)
+            for(Int64 curRockNum = 0; curRockNum < numRocksToDrop ; ++curRockNum)
             {
-                RockFormation rock = rocks[curRockNum % rocks.Count];
+                RockFormation rock = rocks[(int)(curRockNum % rocks.Count)];
                 //spawn:
                 //  each rock appears so that its left edge is two units away from the left wall
                 //  and its bottom edge is three units above the highest rock in the room (or the floor, if there isn't one).
-                Point spawnPoint = new Point(2, board.CurMaxHeight + 3 + rock.wh.Y);
+                Point64 spawnPoint = new Point64(2, board.CurMaxHeight + 3 + rock.wh.Y);
+                if (curRockNum != 0)
+                    spawnPoint.Y -= 1;
 
                 curRockPos = spawnPoint;
 
-                Console.WriteLine("Dropping rock: " + curRockNum + "  current max height: " + board.CurMaxHeight + "  board heights: " + board.Heights.ToList().Select(x => x.ToString()).Aggregate((a,b)=> a + " " + b));
+                if(curRockNum % 100000 == 0)
+                    Console.WriteLine("Dropping rock: " + curRockNum + "  current max height: " + board.CurMaxHeight);
+                //board.DrawBoard();
 
                 //move:
                 //gas, then drop, until collisions
                 for (;;)
                 {
-                    int posAdjust = gasDirs[curGasPos % gasDirs.Count];
+                    int posAdjust = gasDirs[(int)(curGasPos % gasDirs.Count)];
                     curGasPos++;
 
                     //left/right collision... need to check if we can move left/right, or if that would move us into collision...
                     //bounds with board
-                    int newX = curRockPos.X + posAdjust;
+                    Int64 newX = curRockPos.X + posAdjust;
                     if (newX < 0)
                         newX = 0;
-                    if (newX + (rock.wh.X - 1) >= board.Heights.Length)
-                        newX = board.Heights.Length - rock.wh.X;
+                    if (newX + (rock.wh.X - 1) >= board.w)
+                        newX = board.w - rock.wh.X;
 
                     //now check if we are now colliding with other blocks...
                     //maybe we got ourselves a false positive collision...
-                    if(board.CheckCollision(new Point(newX, curRockPos.Y), rock))
+                    if(board.CheckCollision(new Point64(newX, curRockPos.Y), rock))
                     {
-                        //undo the xMove
-                        newX = curRockPos.X;
+                        //Console.WriteLine("   --Rock X moves by " + posAdjust + " to x: " + curRockPos.X + " not doing, collided");
+                    }
+                    else
+                    {
+                        //Console.WriteLine("   --Rock X moves by " + posAdjust + " to x: " + newX);
+                        curRockPos.X = newX;
                     }
 
-                    curRockPos.X = newX;
+                    
 
-                    Console.WriteLine("   --Rock X moves by " + posAdjust + " to x: " + curRockPos.X);
+                    
 
                     //gravity.. lets try to go down... assume we are not colliding on y until we move...
                     //danger zone!
-                    if (!board.CheckCollision(new Point(curRockPos.X, curRockPos.Y - 1), rock))
+                    if (!board.CheckCollision(new Point64(curRockPos.X, curRockPos.Y - 1), rock))
                     {
                         curRockPos.Y -= 1;
-                        Console.WriteLine("   --Rock Y moves by -1 to y: " + curRockPos.Y);
+                        //Console.WriteLine("   --Rock Y moves by -1 to y: " + curRockPos.Y);
                     }
                     else //rock pos is at the spot we would overlap on next step
                     {
-
+                        //Console.WriteLine("   --Rock Y coms to rest at y: " + curRockPos.Y);
                         board.AddRestingRock(curRockPos, rock);
                         break;
                     }
@@ -189,7 +209,7 @@ namespace ConsoleApp1.Solutions
 
             } //rocks
 
-            Console.WriteLine("Highest solid point: " + board.CurMaxHeight);
+            Console.WriteLine("Highest solid point: " + (board.CurMaxHeight - 1));
 
         }//part1
 

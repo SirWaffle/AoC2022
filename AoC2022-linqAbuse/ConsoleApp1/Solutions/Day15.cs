@@ -42,10 +42,10 @@ namespace ConsoleApp1.Solutions
             {
                 Point64 sensor = new Point64();
                 Point64 beacon = new Point64();
-                sensor.x = Int64.Parse(line[1].Split(",")[0].Trim());
-                sensor.y = Int64.Parse(line[2].Split(":")[0].Trim());
-                beacon.x = Int64.Parse(line[3].Split(",")[0].Trim());
-                beacon.y = Int64.Parse(line[4].Trim());
+                sensor.X = Int64.Parse(line[1].Split(",")[0].Trim());
+                sensor.Y = Int64.Parse(line[2].Split(":")[0].Trim());
+                beacon.X = Int64.Parse(line[3].Split(",")[0].Trim());
+                beacon.Y = Int64.Parse(line[4].Trim());
 
                 tiles.Add(sensor, State.Sensor);
 
@@ -54,11 +54,11 @@ namespace ConsoleApp1.Solutions
 
                 //basic dist check to exclude far away sensors
                 Point64 sensorBeaconDistVec = sensor - beacon;
-                Int64 sensorBeaconDist = Math.Abs(sensorBeaconDistVec.x) + Math.Abs(sensorBeaconDistVec.y);
+                Int64 sensorBeaconDist = Math.Abs(sensorBeaconDistVec.X) + Math.Abs(sensorBeaconDistVec.Y);
 
-                Point64 nearestRowPoint = new Point64() { x = sensor.x, y = rowOfInterestYVal };
+                Point64 nearestRowPoint = new Point64() { X = sensor.X, Y = rowOfInterestYVal };
                 Point64 rowDistVec = sensor - nearestRowPoint;
-                Int64 rowDist = Math.Abs(rowDistVec.x) + Math.Abs(rowDistVec.y);
+                Int64 rowDist = Math.Abs(rowDistVec.X) + Math.Abs(rowDistVec.Y);
 
                 //early out
                 if (rowDist > sensorBeaconDist)
@@ -76,15 +76,15 @@ namespace ConsoleApp1.Solutions
                 Int64 b = (Int64)db;
 
                 //now add these points to our list to make sure they are all unique
-                for(Int64 x = nearestRowPoint.x - (b * 2); x < nearestRowPoint.x + (b * 2); ++x)
+                for(Int64 x = nearestRowPoint.X - (b * 2); x < nearestRowPoint.X + (b * 2); ++x)
                 {
                     Point64 key = new Point64();
-                    key.x = x;
-                    key.y = rowOfInterestYVal;
+                    key.X = x;
+                    key.Y = rowOfInterestYVal;
 
                     //lets just make sure it actually is manhatten dist away, since circle will reach farther than mandist..
                     Point64 checkDist = sensor - key;
-                    Int64 checkManDist = Math.Abs(checkDist.x) + Math.Abs(checkDist.y);
+                    Int64 checkManDist = Math.Abs(checkDist.X) + Math.Abs(checkDist.Y);
 
                     if (!(checkManDist <= sensorBeaconDist))
                         continue;
@@ -94,10 +94,10 @@ namespace ConsoleApp1.Solutions
                 }
             }
 
-            var row = canSeeTiles.Where(x => x.Key.y == rowOfInterestYVal).ToList();
+            var row = canSeeTiles.Where(x => x.Key.Y == rowOfInterestYVal).ToList();
 
             //need to subtract the sensor and beacon on that row i guess
-            var objsInRow = tiles.Where(x => x.Key.y == rowOfInterestYVal).ToList();
+            var objsInRow = tiles.Where(x => x.Key.Y == rowOfInterestYVal).ToList();
 
             Console.WriteLine("seen tiles in row y=" + rowOfInterestYVal + ": " + ( row.Count - objsInRow.Count));
         }
@@ -116,14 +116,14 @@ namespace ConsoleApp1.Solutions
             {
                 Point64 sensor = new Point64();
                 Point64 beacon = new Point64();
-                sensor.x = Int64.Parse(line[1].Split(",")[0].Trim());
-                sensor.y = Int64.Parse(line[2].Split(":")[0].Trim());
-                beacon.x = Int64.Parse(line[3].Split(",")[0].Trim());
-                beacon.y = Int64.Parse(line[4].Trim());
+                sensor.X = Int64.Parse(line[1].Split(",")[0].Trim());
+                sensor.Y = Int64.Parse(line[2].Split(":")[0].Trim());
+                beacon.X = Int64.Parse(line[3].Split(",")[0].Trim());
+                beacon.Y = Int64.Parse(line[4].Trim());
 
                 //precal distance
                 Point64 sensorBeaconDistVec = sensor - beacon;
-                Int64 sensorBeaconDist = Math.Abs(sensorBeaconDistVec.x) + Math.Abs(sensorBeaconDistVec.y);
+                Int64 sensorBeaconDist = Math.Abs(sensorBeaconDistVec.X) + Math.Abs(sensorBeaconDistVec.Y);
 
                 tiles.Add(sensor, new SensorData(sensor, beacon, State.Sensor, sensorBeaconDist));
 
@@ -134,9 +134,9 @@ namespace ConsoleApp1.Solutions
 
             //grab just sensors
             var tileList = tiles.ToList().Where(x => x.Value.Type != State.Beacon).ToList();
-            tileList = tileList.OrderByDescending(x => x.Value.sensor.x - x.Value.distance).Reverse().ToList();
+            tileList = tileList.OrderByDescending(x => x.Value.sensor.X - x.Value.distance).Reverse().ToList();
 
-            Scan(tileList, new Point64() { x = 0, y = 0 }, new Point64() { x = 4000000, y = 4000000 });
+            Scan(tileList, new Point64() { X = 0, Y = 0 }, new Point64() { X = 4000000, Y = 4000000 });
         }
 
 
@@ -144,13 +144,13 @@ namespace ConsoleApp1.Solutions
         public static void Scan(List<KeyValuePair<Point64, SensorData>> tileList ,Point64 minBound, Point64 maxBound)
         {
             bool collided = false;
-            Point64 curPoint = new Point64() {  x= minBound.x, y = minBound.y };
+            Point64 curPoint = new Point64() {  X= minBound.X, Y = minBound.Y };
 
-            for (; curPoint.y <= maxBound.y; curPoint.y += 1)
+            for (; curPoint.Y <= maxBound.Y; curPoint.Y += 1)
             {
-                curPoint.x = minBound.x;
+                curPoint.X = minBound.X;
 
-                for (; curPoint.x <= maxBound.x;)
+                for (; curPoint.X <= maxBound.X;)
                 {
                     collided = false;
 
@@ -159,14 +159,14 @@ namespace ConsoleApp1.Solutions
                         Point64 sensor = tileProps.Value.sensor;
 
                         Point64 pointSensorDistVec = sensor - curPoint;
-                        Int64 pointSensorDist = Math.Abs(pointSensorDistVec.x) + Math.Abs(pointSensorDistVec.y);
+                        Int64 pointSensorDist = Math.Abs(pointSensorDistVec.X) + Math.Abs(pointSensorDistVec.Y);
 
                         if (pointSensorDist <= tileProps.Value.distance)
                         {
                             collided = true;
-                            Int64 vertDist = Math.Abs(pointSensorDistVec.y);
+                            Int64 vertDist = Math.Abs(pointSensorDistVec.Y);
                             Int64 remainingDist = tileProps.Value.distance - vertDist;
-                            curPoint.x = sensor.x + remainingDist + 1;
+                            curPoint.X = sensor.X + remainingDist + 1;
                             break;
                         }
                     }
@@ -182,7 +182,7 @@ namespace ConsoleApp1.Solutions
             if (collided == false)
             {
                 Console.WriteLine("Non collided point: " + curPoint);
-                Int64 score = (curPoint.x * 4000000) + curPoint.y;
+                Int64 score = (curPoint.X * 4000000) + curPoint.Y;
                 Console.WriteLine("Score: " + score);
             }
         }

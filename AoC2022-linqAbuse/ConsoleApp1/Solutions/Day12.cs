@@ -43,7 +43,7 @@ namespace ConsoleApp1.Solutions
             {                
                 for(int i = 0; i < line.Length; ++i)
                 {
-                    p.x += 1;
+                    p.X += 1;
 
                     char c = line[i];
                     if(c == 'E')
@@ -60,8 +60,8 @@ namespace ConsoleApp1.Solutions
                     tiles.Add(p, (int)c - (int)'a');
                 }
 
-                p.y += 1;
-                p.x = 0;
+                p.Y += 1;
+                p.X = 0;
             }
 
             //for fun, lets exhaustive search until everything is at optimal values
