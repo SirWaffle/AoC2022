@@ -1,5 +1,7 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Collections;
+using System.Collections.Concurrent;
 using System.Data;
+using System.Diagnostics;
 using static ConsoleApp1.Utils;
 
 namespace ConsoleApp1.Solutions
@@ -35,44 +37,149 @@ namespace ConsoleApp1.Solutions
             }
         }
 
+        struct BitField
+        {
+            public BitField() { }
+
+            public void SetAllTrue()
+            {
+                for(int i =0; i < 8; i++)
+                {
+                    this[i] = true;
+                }
+            }
+
+
+            int b = 0;
+
+            public bool this[int i]
+            {
+                get
+                {
+                    switch(i)
+                    {
+                        case 0: return (b & 0b_1) > 0;
+                        case 1: return (b & 0b_10) > 0;
+                        case 2: return (b & 0b_100) > 0;
+                        case 3: return (b & 0b_1000) > 0;
+                        case 4: return (b & 0b_10000) > 0;
+                        case 5: return (b & 0b_100000) > 0;
+                        case 6: return (b & 0b_1000000) > 0;
+                        case 7: return (b & 0b_10000000) > 0;
+                        case 8: return (b & 0b_100000000) > 0;
+                        default: throw new Exception("out of range");
+                    }
+                }
+                set
+                {
+                    if (value == true)
+                    {
+                        switch (i)
+                        {
+                            case 0: b = b | 0b_1; break;
+                            case 1: b = b | 0b_10; break;
+                            case 2: b = b | 0b_100; break;
+                            case 3: b = b | 0b_1000; break;
+                            case 4: b = b | 0b_10000; break;
+                            case 5: b = b | 0b_100000; break;
+                            case 6: b = b | 0b_1000000; break;
+                            case 7: b = b | 0b_10000000; break;
+                            case 8: b = b | 0b_100000000; break;
+                            default: throw new Exception("out of range");
+                        }
+                    }
+                    else
+                    {
+                        throw new Exception("cant set to false yet");
+                        switch (i)
+                        {
+                            case 0: b = b | 0b_1; break;
+                            case 1: b = b | 0b_10; break;
+                            case 2: b = b | 0b_100; break;
+                            case 3: b = b | 0b_1000; break;
+                            case 4: b = b | 0b_10000; break;
+                            case 5: b = b | 0b_100000; break;
+                            case 6: b = b | 0b_1000000; break;
+                            case 7: b = b | 0b_10000000; break;
+                            case 8: b = b | 0b_100000000; break;
+                            default: throw new Exception("out of range");
+                        }
+                    }
+                }
+            }
+        }
+
         class Board
         {
-            public const Int64 Width = 7;
+            public const int Width = 7;
             public static Int64 FLoorHeight = 0;
 
             public Int64 w { get { return Width; } }
 
             public Int64 CurMaxHeight = FLoorHeight;
-            public List<Int64[]> Heights = new List<Int64[]>();
+            public Dictionary<Int64, BitField> Heights = new();
+
+            public Int64[] maxHeights = new Int64[Width];
 
             public Board()
             {
-                Heights.Add(new Int64[7] { 1,1,1,1,1,1,1});
+                BitField b = new();
+                b.SetAllTrue();
+                Heights.Add(0, b);
+                CurMaxHeight = 0;
             }
 
-            public bool CheckCollision(Point64 pos, RockFormation rock)
+            public bool CheckCollision(Point64 pos, RockFormation rock, bool horizontalMove, int moveAmount)
             {
                 bool collided = false;
 
                 Int64 yCheck = pos.Y - (rock.wh.Y - 1);
-                if (yCheck <= CurMaxHeight)
+                if (yCheck <= CurMaxHeight)                    
                 {
-                    for (Int64 y = pos.Y; y > pos.Y - rock.wh.Y && !collided; y--)
+                    //only check the one side for move dir instead of whole thing...
+
+                    Int64 yStart = pos.Y;
+                    Int64 xStart = pos.X;
+                    Int64 xLimit = pos.X + rock.wh.X;
+                    Int64 yLimit = pos.Y - rock.wh.Y;
+                    /*
+                    if (horizontalMove == true)
                     {
-                        for (Int64 x = pos.X; x < pos.X + rock.wh.X && !collided; x++)
+                        if(moveAmount == 1)
                         {
-                            //scan across width and see if theres a possible overlap
-                            if (Heights.Count > y && Heights[(int)y][x] > 0) //y - 1 sorta works
+                            xStart = xLimit - 1;
+                        }
+                        else if(moveAmount == - 1)
+                        {
+                            xLimit = xStart + 1;
+                        }
+                    }
+                    else
+                    {
+                       yStart = yLimit + 1;
+                    }*/
+
+                    for (Int64 y = pos.Y; y > yLimit && !collided; y--)
+                    {
+                        if (CurMaxHeight >= y)
+                        {
+                            BitField ba = Heights[(int)y];
+                            Int64 x = xStart;
+                            for (; x < xLimit && !collided; x++)
                             {
-                                //possible overlap, see if this part of the rock is solid or not...
-                                //grab index into rock shape...
-                                Int64 rockX = x - (pos.X);
-                                Int64 rockY = Math.Abs(y - (pos.Y));
+                                //scan across width and see if theres a possible overlap
+                                if (ba[(int)x] == true)
+                                {
+                                    //possible overlap, see if this part of the rock is solid or not...
+                                    //grab index into rock shape...
+                                    Int64 rockX = x - (pos.X);
+                                    Int64 rockY = Math.Abs(y - (pos.Y));
 
-                                collided = rock.IsSolidAtPoint((int)rockX, (int)rockY);
-                            }
+                                    collided = rock.IsSolidAtPoint((int)rockX, (int)rockY);
+                                }
 
-                        }//x
+                            }//x
+                        }//y curheight check
                     }//y
                 }//col check loop
 
@@ -81,36 +188,52 @@ namespace ConsoleApp1.Solutions
 
             public void AddRestingRock(Point64 pos, RockFormation rock)
             {
+                bool changed = false;
                 for (Int64 y = pos.Y; y > pos.Y - rock.wh.Y; y--)
                 {
+                    if (y > CurMaxHeight)
+                    {
+                        changed = true;
+                        Heights.TryAdd(y, new BitField());
+                    }
+
+                    BitField bits = Heights[(int)y];
+
                     for (Int64 x = pos.X; x < pos.X + rock.wh.X; x++)
                     {
-                        while (Heights.Count <= y)
-                            Heights.Add(new Int64[Width]);
-
                         Int64 rockX = x - (pos.X);
                         Int64 rockY = Math.Abs(y - (pos.Y));
 
                         bool isSolid = rock.IsSolidAtPoint((int)rockX, (int)rockY);
                         if (isSolid)
                         {
-                            Heights[(int)y][x] = Math.Max(Heights[(int)y][x], pos.Y); //y is the actual y pos, but pos.y gives good variationm to see diff rocks
+                            changed = true;
+                            bits[(int)x] = true;
+                            maxHeights[(int)x] = Math.Max(maxHeights[(int)x], y);
                         }
                     }//x
+
+                    if(changed)
+                        Heights[(int)y] = bits; //y is the actual y pos, but pos.y gives good variationm to see diff rocks
+
                 }//y
 
                 //update heightmap and max height
-                CurMaxHeight = Heights.Last().ToList().Max();
-                CurMaxHeight = Heights.Count;
+                //CurMaxHeight = Heights.Last().ToList().Max();
+                //CurMaxHeight = Heights.Count;
+                CurMaxHeight = Math.Max(CurMaxHeight, pos.Y + 1); // Heights.Count;
+                Heights.TryAdd(pos.Y + 1, new BitField());
             }
 
             public void DrawBoard()
             {
-                var rev = Heights.Reverse<Int64[]>().ToList();
+                /*
+                var rev = Heights.Reverse<BitArray>().ToList();
                 foreach (var row in rev)
                 {
-                    Console.WriteLine(row.ToList().Select(x => x.ToString()).Aggregate((a,b) => a + " " + b));
+                    //Console.WriteLine(row.ToList().Select(x => x.ToString()).Aggregate((a,b) => a + " " + b));
                 }
+                */
             }
         }
 
@@ -142,8 +265,39 @@ namespace ConsoleApp1.Solutions
             Point64 curRockPos = new Point64();
             Int64 curGasPos = 0;
 
-            for(Int64 curRockNum = 0; curRockNum < numRocksToDrop ; ++curRockNum)
+            var sw = Stopwatch.StartNew();
+
+            for (Int64 curRockNum = 0; curRockNum < numRocksToDrop ; ++curRockNum)
             {
+                //lets clear out our map of values as we go... im sure we can ditch some pretty far down...
+                if(curRockNum > 0 && curRockNum % 50000000 == 0)
+                {
+                    /*
+                    //scan for full rows...
+                    var full = board.Heights.Where(x => x.Value.Cast<bool>().All(x => x == true));
+
+                    //remove anything below full
+                    if (full.Count() > 0)
+                    {
+                        var highestFull = full.Max(x => x.Key) - 1;
+                        if (highestFull > 0)
+                        {
+                            board.Heights = board.Heights.OrderByDescending(x => x.Key).Where(x => x.Key >= highestFull).ToDictionary(x => x.Key, x => x.Value);
+                        }
+                    }*/
+
+                    //remove anything inaccessible
+                    //bad math breathing room...
+                    var highestFull = board.maxHeights.Min() - 5;
+                    if (highestFull > 0)
+                    {
+                        Console.WriteLine("Cleaning inaccessible locations....");
+                        board.Heights = board.Heights.OrderByDescending(x => x.Key).Where(x => x.Key >= highestFull).ToDictionary(x => x.Key, x => x.Value);
+                    }
+
+                }
+
+
                 RockFormation rock = rocks[(int)(curRockNum % rocks.Count)];
                 //spawn:
                 //  each rock appears so that its left edge is two units away from the left wall
@@ -154,8 +308,15 @@ namespace ConsoleApp1.Solutions
 
                 curRockPos = spawnPoint;
 
-                if(curRockNum % 100000 == 0)
-                    Console.WriteLine("Dropping rock: " + curRockNum + "  current max height: " + board.CurMaxHeight);
+                if (curRockNum % 5000000 == 0)
+                {
+                    float percentDOne = (((float)curRockNum + 1) / (float)numRocksToDrop);
+                    float elapsed = ((float)sw.ElapsedMilliseconds / (float)1000);
+                    float timeRemaining = 100.0f / percentDOne;
+                    timeRemaining *= elapsed;
+                    Console.WriteLine("Progress: " + percentDOne + "    Dropping rock: " + curRockNum + "  current max height: " + board.CurMaxHeight + " board keys: " + board.Heights.Count());
+                    Console.WriteLine("Elapsed seconds: " + elapsed + "   estiamted time to completion seconds: " + timeRemaining);
+                }
                 //board.DrawBoard();
 
                 //move:
@@ -175,7 +336,7 @@ namespace ConsoleApp1.Solutions
 
                     //now check if we are now colliding with other blocks...
                     //maybe we got ourselves a false positive collision...
-                    if(board.CheckCollision(new Point64(newX, curRockPos.Y), rock))
+                    if(board.CheckCollision(new Point64(newX, curRockPos.Y), rock, true, posAdjust))
                     {
                         //Console.WriteLine("   --Rock X moves by " + posAdjust + " to x: " + curRockPos.X + " not doing, collided");
                     }
@@ -191,7 +352,7 @@ namespace ConsoleApp1.Solutions
 
                     //gravity.. lets try to go down... assume we are not colliding on y until we move...
                     //danger zone!
-                    if (!board.CheckCollision(new Point64(curRockPos.X, curRockPos.Y - 1), rock))
+                    if (!board.CheckCollision(new Point64(curRockPos.X, curRockPos.Y - 1), rock, false, -1))
                     {
                         curRockPos.Y -= 1;
                         //Console.WriteLine("   --Rock Y moves by -1 to y: " + curRockPos.Y);
