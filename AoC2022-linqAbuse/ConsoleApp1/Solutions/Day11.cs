@@ -1,33 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Runtime.CompilerServices;
-using System.Runtime.Versioning;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Xml.Schema;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
-namespace ConsoleApp1.Solutions
+﻿namespace ConsoleApp1.Solutions
 {
     internal class Day11 : AbstractPuzzle
     {
-        public override void Part1()
+        public class MonkE
         {
-            Both(20, (item, testFactor) => item / 3);
-        }             
-
-        override public void Part2()
-        {
-            Both(10000, (item, testFactor) => item % testFactor);
-        }
-
-        public class Monk
-        {            
             public enum Op
             {
                 None,
@@ -50,10 +26,20 @@ namespace ConsoleApp1.Solutions
             public UInt64 inspectedCount = 0;
         }
 
+        public override void Part1()
+        {
+            Both(20, (item, testFactor) => item / 3);
+        }             
+
+        override public void Part2()
+        {
+            Both(10000, (item, testFactor) => item % testFactor);
+        }
+
         public void Both(int numRounds, Func<UInt64, UInt64, UInt64> anxiolytic)
         {
             //monkey data
-            List<Monk> monks = new List<Monk>();
+            List<MonkE> monks = new List<MonkE>();
 
             //parse
             var monkStrs = File.ReadAllText(InputFile!).Split("\r\n\r\n").Select( m => m.Split("\r\n").Select( x => x.Split(":")[1].Trim()).ToList());            
@@ -61,13 +47,13 @@ namespace ConsoleApp1.Solutions
 
             foreach (var monkData in monkStrs)
             {
-                Monk m = new();
+                MonkE m = new();
                 m.items = monkData[1].Split(",").Select(x => x.Trim()).Select(x => UInt64.Parse(x)).ToList();
 
                 if (monkData[2].Contains('*'))
-                    m.op = Monk.Op.Mult;
+                    m.op = MonkE.Op.Mult;
                 else if (monkData[2].Contains('+'))
-                    m.op = Monk.Op.Add;
+                    m.op = MonkE.Op.Add;
 
                 var val = monkData[2].Split(' ').Last().Trim();
                 if (val == "old")
@@ -90,7 +76,7 @@ namespace ConsoleApp1.Solutions
             {
                 for(int player = 0; player < monks.Count; ++player)
                 {
-                    Monk m = monks[player];
+                    MonkE m = monks[player];
                     while(m.items.Count() > 0)
                     {
                         m.inspectedCount++;
@@ -103,10 +89,10 @@ namespace ConsoleApp1.Solutions
                         UInt64 opVal = m.useOld == true ? itemVal : m.opVal;                        
                         itemVal = m.op switch
                         {
-                            Monk.Op.Mult => itemVal * opVal,
-                            Monk.Op.Div => itemVal / opVal,
-                            Monk.Op.Add => itemVal + opVal,
-                            Monk.Op.Sub => itemVal - opVal,
+                            MonkE.Op.Mult => itemVal * opVal,
+                            MonkE.Op.Div => itemVal / opVal,
+                            MonkE.Op.Add => itemVal + opVal,
+                            MonkE.Op.Sub => itemVal - opVal,
                             _ => throw new Exception("invalid op")
                         };
 
