@@ -15,11 +15,40 @@ namespace ConsoleApp1.Solutions
         {
             string rockStr;
             public Point wh;
+            BitField[] bitsPerRow;
 
             public RockFormation(string rock, int w, int h)
             {
                 rockStr = rock;
                 wh = new Point(w, h);
+
+                int maxBit = 0;
+                bitsPerRow = new BitField[h];
+                for(int y = 0; y < h; ++y)
+                {
+                    for (int x = 0; x < w; ++x)
+                    {
+                        if (IsSolidAtPoint(x, y))
+                        {
+                            bitsPerRow[y][x] = true;
+                            if(maxBit < x)
+                            {
+                                maxBit = x;
+                            }
+                        }
+                    }
+                }
+
+                //need to jsutify the bits to the left...so taht the first 1 is on the leftside at pos 0 for the board.. which is 7 wide...
+                for(int i =0; i < bitsPerRow.Length;++i)
+                {
+                    //bitsPerRow[i].bits = bitsPerRow[i].bits << (Board.Width - maxBit - 1);
+                }
+            }
+
+            public bool RowCollision(int y, int xShift, BitField b)
+            {
+                return bitsPerRow[y].Collides(b, xShift);
             }
 
             //expects 0 based..
@@ -41,6 +70,15 @@ namespace ConsoleApp1.Solutions
         {
             public BitField() { }
 
+            public void Set(bool[] vals)
+            {
+                for (int i = 0; i < vals.Length; i++)
+                {
+                    if (vals[i])
+                        this[i] = true;
+                }
+            }
+
             public void SetAllTrue()
             {
                 for(int i =0; i < 8; i++)
@@ -49,8 +87,13 @@ namespace ConsoleApp1.Solutions
                 }
             }
 
+            public bool Collides(BitField other, int lShift = 0)
+            {
+                return (other.bits & ( bits << lShift ) ) > 0;
+            }
 
-            int b = 0;
+
+            public int bits = 0;
 
             public bool this[int i]
             {
@@ -58,15 +101,15 @@ namespace ConsoleApp1.Solutions
                 {
                     switch(i)
                     {
-                        case 0: return (b & 0b_1) > 0;
-                        case 1: return (b & 0b_10) > 0;
-                        case 2: return (b & 0b_100) > 0;
-                        case 3: return (b & 0b_1000) > 0;
-                        case 4: return (b & 0b_10000) > 0;
-                        case 5: return (b & 0b_100000) > 0;
-                        case 6: return (b & 0b_1000000) > 0;
-                        case 7: return (b & 0b_10000000) > 0;
-                        case 8: return (b & 0b_100000000) > 0;
+                        case 0: return (bits & 0b_1) > 0;
+                        case 1: return (bits & 0b_10) > 0;
+                        case 2: return (bits & 0b_100) > 0;
+                        case 3: return (bits & 0b_1000) > 0;
+                        case 4: return (bits & 0b_10000) > 0;
+                        case 5: return (bits & 0b_100000) > 0;
+                        case 6: return (bits & 0b_1000000) > 0;
+                        case 7: return (bits & 0b_10000000) > 0;
+                        case 8: return (bits & 0b_100000000) > 0;
                         default: throw new Exception("out of range");
                     }
                 }
@@ -76,15 +119,15 @@ namespace ConsoleApp1.Solutions
                     {
                         switch (i)
                         {
-                            case 0: b = b | 0b_1; break;
-                            case 1: b = b | 0b_10; break;
-                            case 2: b = b | 0b_100; break;
-                            case 3: b = b | 0b_1000; break;
-                            case 4: b = b | 0b_10000; break;
-                            case 5: b = b | 0b_100000; break;
-                            case 6: b = b | 0b_1000000; break;
-                            case 7: b = b | 0b_10000000; break;
-                            case 8: b = b | 0b_100000000; break;
+                            case 0: bits = bits | 0b_1; break;
+                            case 1: bits = bits | 0b_10; break;
+                            case 2: bits = bits | 0b_100; break;
+                            case 3: bits = bits | 0b_1000; break;
+                            case 4: bits = bits | 0b_10000; break;
+                            case 5: bits = bits | 0b_100000; break;
+                            case 6: bits = bits | 0b_1000000; break;
+                            case 7: bits = bits | 0b_10000000; break;
+                            case 8: bits = bits | 0b_100000000; break;
                             default: throw new Exception("out of range");
                         }
                     }
@@ -93,15 +136,15 @@ namespace ConsoleApp1.Solutions
                         throw new Exception("cant set to false yet");
                         switch (i)
                         {
-                            case 0: b = b | 0b_1; break;
-                            case 1: b = b | 0b_10; break;
-                            case 2: b = b | 0b_100; break;
-                            case 3: b = b | 0b_1000; break;
-                            case 4: b = b | 0b_10000; break;
-                            case 5: b = b | 0b_100000; break;
-                            case 6: b = b | 0b_1000000; break;
-                            case 7: b = b | 0b_10000000; break;
-                            case 8: b = b | 0b_100000000; break;
+                            case 0: bits = bits | 0b_1; break;
+                            case 1: bits = bits | 0b_10; break;
+                            case 2: bits = bits | 0b_100; break;
+                            case 3: bits = bits | 0b_1000; break;
+                            case 4: bits = bits | 0b_10000; break;
+                            case 5: bits = bits | 0b_100000; break;
+                            case 6: bits = bits | 0b_1000000; break;
+                            case 7: bits = bits | 0b_10000000; break;
+                            case 8: bits = bits | 0b_100000000; break;
                             default: throw new Exception("out of range");
                         }
                     }
@@ -142,43 +185,18 @@ namespace ConsoleApp1.Solutions
                     Int64 xStart = pos.X;
                     Int64 xLimit = pos.X + rock.wh.X;
                     Int64 yLimit = pos.Y - rock.wh.Y;
-                    /*
-                    if (horizontalMove == true)
-                    {
-                        if(moveAmount == 1)
-                        {
-                            xStart = xLimit - 1;
-                        }
-                        else if(moveAmount == - 1)
-                        {
-                            xLimit = xStart + 1;
-                        }
-                    }
-                    else
-                    {
-                       yStart = yLimit + 1;
-                    }*/
+
 
                     for (Int64 y = pos.Y; y > yLimit && !collided; y--)
                     {
                         if (CurMaxHeight >= y)
                         {
                             BitField ba = Heights[(int)y];
-                            Int64 x = xStart;
-                            for (; x < xLimit && !collided; x++)
-                            {
-                                //scan across width and see if theres a possible overlap
-                                if (ba[(int)x] == true)
-                                {
-                                    //possible overlap, see if this part of the rock is solid or not...
-                                    //grab index into rock shape...
-                                    Int64 rockX = x - (pos.X);
-                                    Int64 rockY = Math.Abs(y - (pos.Y));
+                            Int64 rockBY = Math.Abs(y - (pos.Y));
 
-                                    collided = rock.IsSolidAtPoint((int)rockX, (int)rockY);
-                                }
-
-                            }//x
+                            //need to bitshift...
+                            collided = rock.RowCollision((int)rockBY, (int)pos.X, ba);
+     
                         }//y curheight check
                     }//y
                 }//col check loop
@@ -203,7 +221,7 @@ namespace ConsoleApp1.Solutions
                     {
                         Int64 rockX = x - (pos.X);
                         Int64 rockY = Math.Abs(y - (pos.Y));
-
+                        //TODO: bitify
                         bool isSolid = rock.IsSolidAtPoint((int)rockX, (int)rockY);
                         if (isSolid)
                         {
@@ -223,17 +241,6 @@ namespace ConsoleApp1.Solutions
                 //CurMaxHeight = Heights.Count;
                 CurMaxHeight = Math.Max(CurMaxHeight, pos.Y + 1); // Heights.Count;
                 Heights.TryAdd(pos.Y + 1, new BitField());
-            }
-
-            public void DrawBoard()
-            {
-                /*
-                var rev = Heights.Reverse<BitArray>().ToList();
-                foreach (var row in rev)
-                {
-                    //Console.WriteLine(row.ToList().Select(x => x.ToString()).Aggregate((a,b) => a + " " + b));
-                }
-                */
             }
         }
 
@@ -272,20 +279,6 @@ namespace ConsoleApp1.Solutions
                 //lets clear out our map of values as we go... im sure we can ditch some pretty far down...
                 if(curRockNum > 0 && curRockNum % 50000000 == 0)
                 {
-                    /*
-                    //scan for full rows...
-                    var full = board.Heights.Where(x => x.Value.Cast<bool>().All(x => x == true));
-
-                    //remove anything below full
-                    if (full.Count() > 0)
-                    {
-                        var highestFull = full.Max(x => x.Key) - 1;
-                        if (highestFull > 0)
-                        {
-                            board.Heights = board.Heights.OrderByDescending(x => x.Key).Where(x => x.Key >= highestFull).ToDictionary(x => x.Key, x => x.Value);
-                        }
-                    }*/
-
                     //remove anything inaccessible
                     //bad math breathing room...
                     var highestFull = board.maxHeights.Min() - 5;
