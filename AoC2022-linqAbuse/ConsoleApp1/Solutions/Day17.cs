@@ -160,16 +160,38 @@ namespace ConsoleApp1.Solutions
             public Int64 w { get { return Width; } }
 
             public Int64 CurMaxHeight = FLoorHeight;
-            public Dictionary<Int64, BitField> Heights = new();
+            //public Dictionary<Int64, BitField> Heights = new();
+
+            public List<BitField> Heights = new();
 
             public Int64[] maxHeights = new Int64[Width];
+
+
+            Int64 yIndexOffset = 0;
 
             public Board()
             {
                 BitField b = new();
                 b.SetAllTrue();
-                Heights.Add(0, b);
+                Heights.Add(b);
                 CurMaxHeight = 0;
+            }
+
+            public int GetAdjustedYIndex(Int64 y)
+            {
+                return (int)(y - yIndexOffset);
+            }
+
+            public void Clean()
+            {
+                var highestFull = maxHeights.Min() - 5;
+                if (highestFull > yIndexOffset)
+                {
+                    Console.WriteLine("Cleaning inaccessible locations....");
+                    int actualInd = GetAdjustedYIndex(highestFull);
+                    Heights.RemoveRange(0, actualInd);//, Heights.Count - (int)actualInd);
+                    yIndexOffset += actualInd;
+                }
             }
 
             public bool CheckCollision(Point64 pos, RockFormation rock, bool horizontalMove, int moveAmount)
@@ -189,9 +211,9 @@ namespace ConsoleApp1.Solutions
 
                     for (Int64 y = pos.Y; y > yLimit && !collided; y--)
                     {
-                        if (CurMaxHeight >= y)
+                        if (CurMaxHeight >= y && y < (yIndexOffset + Heights.Count))
                         {
-                            BitField ba = Heights[(int)y];
+                            BitField ba = Heights[GetAdjustedYIndex(y)];
                             Int64 rockBY = Math.Abs(y - (pos.Y));
 
                             //need to bitshift...
@@ -209,13 +231,13 @@ namespace ConsoleApp1.Solutions
                 bool changed = false;
                 for (Int64 y = pos.Y; y > pos.Y - rock.wh.Y; y--)
                 {
-                    if (y > CurMaxHeight)
+                    while (y >= (yIndexOffset + Heights.Count))
                     {
                         changed = true;
-                        Heights.TryAdd(y, new BitField());
+                        Heights.Add(new BitField());
                     }
 
-                    BitField bits = Heights[(int)y];
+                    BitField bits = Heights[GetAdjustedYIndex(y)];
 
                     for (Int64 x = pos.X; x < pos.X + rock.wh.X; x++)
                     {
@@ -232,7 +254,7 @@ namespace ConsoleApp1.Solutions
                     }//x
 
                     if(changed)
-                        Heights[(int)y] = bits; //y is the actual y pos, but pos.y gives good variationm to see diff rocks
+                        Heights[GetAdjustedYIndex(y)] = bits; //y is the actual y pos, but pos.y gives good variationm to see diff rocks
 
                 }//y
 
@@ -240,7 +262,7 @@ namespace ConsoleApp1.Solutions
                 //CurMaxHeight = Heights.Last().ToList().Max();
                 //CurMaxHeight = Heights.Count;
                 CurMaxHeight = Math.Max(CurMaxHeight, pos.Y + 1); // Heights.Count;
-                Heights.TryAdd(pos.Y + 1, new BitField());
+                //Heights.Add(new BitField());
             }
         }
 
@@ -277,16 +299,19 @@ namespace ConsoleApp1.Solutions
             for (Int64 curRockNum = 0; curRockNum < numRocksToDrop ; ++curRockNum)
             {
                 //lets clear out our map of values as we go... im sure we can ditch some pretty far down...
-                if(curRockNum > 0 && curRockNum % 50000000 == 0)
+                if (curRockNum > 0)// && curRockNum % 50000000 == 0)
                 {
                     //remove anything inaccessible
                     //bad math breathing room...
+                    /*
                     var highestFull = board.maxHeights.Min() - 5;
                     if (highestFull > 0)
                     {
                         Console.WriteLine("Cleaning inaccessible locations....");
                         board.Heights = board.Heights.OrderByDescending(x => x.Key).Where(x => x.Key >= highestFull).ToDictionary(x => x.Key, x => x.Value);
-                    }
+                    }*/
+
+                    board.Clean();
 
                 }
 
