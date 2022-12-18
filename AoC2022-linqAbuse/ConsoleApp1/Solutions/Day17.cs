@@ -53,7 +53,7 @@ namespace ConsoleApp1.Solutions
             }
 
             //expects 0 based..
-            public bool IsSolidAtPoint(int x, int y)
+            bool IsSolidAtPoint(int x, int y)
             {
                 int ind = (y * wh.X) + x;
                 if(rockStr.Length > ind)
@@ -149,19 +149,6 @@ namespace ConsoleApp1.Solutions
                     else
                     {
                         throw new Exception("cant set to false yet");
-                        switch (i)
-                        {
-                            case 0: bits = bits | 0b_1; break;
-                            case 1: bits = bits | 0b_10; break;
-                            case 2: bits = bits | 0b_100; break;
-                            case 3: bits = bits | 0b_1000; break;
-                            case 4: bits = bits | 0b_10000; break;
-                            case 5: bits = bits | 0b_100000; break;
-                            case 6: bits = bits | 0b_1000000; break;
-                            case 7: bits = bits | 0b_10000000; break;
-                            case 8: bits = bits | 0b_100000000; break;
-                            default: throw new Exception("out of range");
-                        }
                     }
                 }
             }
@@ -175,7 +162,6 @@ namespace ConsoleApp1.Solutions
             public Int64 w { get { return Width; } }
 
             public Int64 CurMaxHeight = FLoorHeight;
-            //public Dictionary<Int64, BitField> Heights = new();
 
             public List<BitField> Heights = new();
 
@@ -198,7 +184,7 @@ namespace ConsoleApp1.Solutions
             }
 
 
-            int maxCycLen = 0;
+            int maxMatchLenDelta = 0;
             int maxMatchLen = 0;
             public void SearchForCycle()
             {
@@ -217,41 +203,14 @@ namespace ConsoleApp1.Solutions
                             if (matchLen >= maxMatchLen)
                             {
                                 maxMatchLen = matchLen;
+                                maxMatchLenDelta = e - s;
                                 Console.WriteLine("NEW MAX MATCHLEN --> starting at: " + s + " and " + e + " delta is: " + (e - s) + " maxMatchLen: " + maxMatchLen);
-                            }
-                            else if(e - s < 5000 && matchLen > 1000)
-                            {
-                                //Console.WriteLine("starting at: " + s + " and " + e + " delta is: " + (e - s) + " len: " + matchLen);
-                            }
-
-                            //jump ahead the length and see if theres repeats
-                            bool failedOut = false;
-                            int delta = e - s;
-                            int reps = 0;
-                            for (int rep = e; rep < Heights.Count; rep += delta)
-                            {
-                                if(Heights[rep].bits != Heights[s].bits)
-                                {
-                                    failedOut = true;
-                                }
-                                reps++;
-                            }
-
-                            if(failedOut == false && maxCycLen < delta && reps > 1)
-                            {
-                                //if (MatchLength(s, e) == delta)
-                                {
-                                    maxCycLen = delta;
-                                    //maybe we have a cycle!
-                                    //Console.WriteLine("potential cycle starting at: " + s + " of length " + delta + " with " + reps + " repetitions");
-                                    //Console.WriteLine("matchLen: " + MatchLength(s, e));
-                                }
                             }
                         }
                     }
                 }
 
-                Console.WriteLine("maxMatchLen: " + maxMatchLen);
+                Console.WriteLine("maxMatchLen: " + maxMatchLen + "  with delta: " + maxMatchLenDelta);
             }
 
             public int MatchLength(int start1, int start2)
@@ -272,12 +231,13 @@ namespace ConsoleApp1.Solutions
                 var highestFull = maxHeights.Min() - 5;
                 if (highestFull > yIndexOffset)
                 {
-                    //Console.WriteLine("Cleaning inaccessible locations....");
-                    //visualize before we lkay waste to it:
+                    Console.WriteLine("Cleaning inaccessible locations....");
+                    
                     int actualInd = GetAdjustedYIndex(highestFull);
 
-                    for (int i = 0; i < actualInd; ++i)
-                        Console.WriteLine(ToBinary(Heights[i].bits).Replace('0', ' ').Replace('1', '#'));
+                    //visualize before we lkay waste to it:
+                    //for (int i = 0; i < actualInd; ++i)
+                    //    Console.WriteLine(ToBinary(Heights[i].bits).Replace('0', ' ').Replace('1', '#'));
 
                     Heights.RemoveRange(0, actualInd);
                     yIndexOffset += actualInd;
@@ -312,49 +272,27 @@ namespace ConsoleApp1.Solutions
 
             public void AddRestingRock(Point64 pos, RockFormation rock)
             {
-                bool changed = false;
                 for (Int64 y = pos.Y; y > pos.Y - rock.wh.Y; y--)
                 {
                     while (y >= (yIndexOffset + Heights.Count))
-                    {
-                        changed = true;
                         Heights.Add(new BitField());
-                    }
 
                     BitField bits = Heights[GetAdjustedYIndex(y)];
 
                     //todo, bad math...? at least behaving differently                    
-                    //Int64 rockBY = Math.Abs(y - (pos.Y));
-                    //int newVal = bits.bits | ( rock.bitsPerRow[rockBY].bits << (int)pos.X);
-                    //bits.bits = newVal;
-                    //Heights[GetAdjustedYIndex(y)] = bits;
-                    
-                    
-                    for (Int64 x = pos.X; x < pos.X + rock.wh.X; x++)
-                    {
-                        Int64 rockX = x - (pos.X);
-                        Int64 rockY = Math.Abs(y - (pos.Y));
+                    Int64 rockBY = Math.Abs(y - (pos.Y));
+                    int newVal = bits.bits | ( rock.bitsPerRow[rockBY].bits << (int)pos.X);
+                    bits.bits = newVal;
+                    Heights[GetAdjustedYIndex(y)] = bits;
 
-                        //TODO: bitify
-                        bool isSolid = rock.IsSolidAtPoint((int)rockX, (int)rockY);
-                        if (isSolid)
-                        {
-                            changed = true;
-                            bits[(int)x] = true;
-                            maxHeights[(int)x] = Math.Max(maxHeights[(int)x], y);
+                    if(bits.bits > 0) //update our maxheights values for cleaning...
+                    {
+                        for(int x = 0; x < 8; ++x)
+                        {                            
+                            if(bits[x] == true)
+                                maxHeights[x] = Math.Max(y, maxHeights[x]);
                         }
-                    }//x
-
-                    /*
-                    if(newVal != bits.bits)
-                    {
-                        int badmath = 0;
-                        ++badmath;
-                    }*/
-                    if(changed)
-                        Heights[GetAdjustedYIndex(y)] = bits;
-                    
-
+                    }               
                 }//y
 
                 //update heightmap and max height
@@ -372,52 +310,114 @@ namespace ConsoleApp1.Solutions
             rocks.Add(new RockFormation("####", 2, 2)); //box
             return rocks;
         }
-        //TODO: probably actually have to remember the shapes, not just the hieght map... sad...
+
         override public void Part1()
         {
             var gasDirsStr = File.ReadAllText(InputFile!).Trim();
             List<int> gasDirs = gasDirsStr.Select(x => x == '<' ? -1: 1).ToList();
 
-
             var rocks = CreateRockFormations();
 
             Int64 numRocksToDrop = 2022;
-            //numRocksToDrop = 1000000000000;
-            numRocksToDrop = 4000; //NEW MAX MATCHLEN --> starting at: 349 and 3127 delta is: 2778 maxMatchLen: 1588832
+            numRocksToDrop = 1000000000000;
+            //numRocksToDrop =(25345613) + (Random.Shared.Next(2778)); //NEW MAX MATCHLEN --> starting at: 349 and 3127 delta is: 2778 maxMatchLen: 1588832
+
+
+            //lets try to estimate the height at the detected cycle...;
+            Int64 cycleStart = 349;
+            Int64 cycleLen = 2778;
+
+            Int64 rocksPerCycle = 1745; //ROCKS per cycle, got from printing out height + rocks
+            Int64 heightPerCycle = 2778;
+
+            //lets project values based on number of rocks and see if im right...
+            // h348 = r228, h350 = r229
+            // h350 seems to be part 1 of the cycle... so cycle starts on ROCK 229
+
+            Int64 preCycHeight = 348;
+            Int64 preCycRock = 228;
+
+            Int64 numCycles = (numRocksToDrop - preCycRock) / rocksPerCycle;
+            Int64 remainingRocks = (numRocksToDrop - preCycRock) % rocksPerCycle;
+
+            List<Int64> heightAtRockNum = new();
+
+            Int64 predictedHeight = 0;
+
+            Console.WriteLine("Num cycles predicted: " + numCycles + " with " + remainingRocks + " remaining. ");
 
             Board board = new();
-
             Point64 curRockPos = new Point64();
             Int64 curGasPos = 0;
 
             var sw = Stopwatch.StartNew();
 
+            int trackRockheights = 2;
+
+            int curCycles = 0;
             for (Int64 curRockNum = 0; curRockNum < numRocksToDrop ; ++curRockNum)
             {
-                if(board.Heights.Count() > 345 && board.Heights.Count() < 352)
-                {
-                    Console.WriteLine("Rock num at height: " + board.Heights.Count + "   is  " + curRockNum);
-                }
-                if (board.Heights.Count() > 3124 && board.Heights.Count() < 3130)
-                {
-                    Console.WriteLine("Rock num at height: " + board.Heights.Count + "   is  " + curRockNum);
-                }
+                if(trackRockheights > 0)
+                    heightAtRockNum.Add(board.Heights.Count() - 1);
 
-                if (curRockNum == 782)
+                if (board.Heights.Count() == cycleStart)
                 {
-                    Console.WriteLine("Height at rockNum 782: " + board.Heights.Count);
+                    Console.WriteLine("Rock num at height: " + (board.Heights.Count - 1) + "   is  " + curRockNum);
+                }
+                if (board.Heights.Count() == cycleStart - 1)
+                {
+                    Console.WriteLine("Rock num at height: " + (board.Heights.Count - 1) + "   is  " + curRockNum);
+                }
+                else if ((( (board.Heights.Count() - 1) - cycleStart) - 1) % cycleLen == 0) //starts at 351 here?
+                {
+                    curCycles++;
+
+                    Int64 thisPredictedHeight = preCycHeight + (heightPerCycle * (curCycles - 1));
+                    //Console.WriteLine("Current cycle height prediction: " + thisPredictedHeight);
+
+
+                    //Console.WriteLine("Rock num at height: " + (board.Heights.Count - 1) + "   is  " + curRockNum);
+
+                    if (board.Heights.Count() > 1000)
+                    {
+                        if (trackRockheights > 0)
+                        {
+                            --trackRockheights;
+
+                            for (int i = 0; i < heightAtRockNum.Count; ++i)
+                            {
+                                if (remainingRocks >= (i - 3) && remainingRocks <= (i + 3))
+                                {
+                                    Console.WriteLine("at rock:  " + (i + 1) + "  height: " + heightAtRockNum[i]);
+                                }
+                            }
+
+                            predictedHeight = preCycHeight + (heightPerCycle * numCycles) + (heightAtRockNum[(int)remainingRocks - 1] - (preCycHeight + heightPerCycle));
+                            Console.WriteLine("Predicted height at end: " + predictedHeight);
+                            heightAtRockNum.Clear();
+
+                            if (trackRockheights == 0)
+                               break;
+                            //not: 1591977077353
+                            //seem to range from 0 to 3 off...so lets try adding on each time...
+                            //not: 1591977077354  //+1
+                            //not: 1591977077355  //+2
+                            //not: 1591977077356  //+3
+                            //1591977077357  //+4 maybe?
+                        }
+                    }
                 }
 
                 //lets clear out our map of values as we go... im sure we can ditch some pretty far down...                
-                if (curRockNum > 0)// && curRockNum % 500000000 == 0)
+                if (curRockNum > 0 && curRockNum % 100000000 == 0)
                 {
                     float percentDOne = (((float)curRockNum + 1) / (float)numRocksToDrop);
                     float elapsed = ((float)sw.ElapsedMilliseconds / (float)1000);
                     float timeRemaining = 100.0f / percentDOne;
                     timeRemaining *= elapsed;
-                    //Console.WriteLine("Progress: " + percentDOne + "    Dropping rock: " + curRockNum + "  current max height: " + board.CurMaxHeight + " board keys: " + board.Heights.Count());
-                    //Console.WriteLine("Elapsed seconds: " + elapsed + "   estiamted time to completion seconds: " + timeRemaining);
-                    //board.Clean(); 
+                    Console.WriteLine("Progress: " + percentDOne + "    Dropping rock: " + curRockNum + "  current max height: " + board.CurMaxHeight + " board keys: " + board.Heights.Count());
+                    Console.WriteLine("Elapsed seconds: " + elapsed + "   estiamted time to completion seconds: " + timeRemaining);
+                    board.Clean(); 
                 }
 
 
@@ -425,11 +425,9 @@ namespace ConsoleApp1.Solutions
                 //spawn:
                 //  each rock appears so that its left edge is two units away from the left wall
                 //  and its bottom edge is three units above the highest rock in the room (or the floor, if there isn't one).
-                Point64 spawnPoint = new Point64(2, board.CurMaxHeight + 3 + rock.wh.Y);
+                curRockPos = new Point64(2, board.CurMaxHeight + 3 + rock.wh.Y);
                 if (curRockNum != 0)
-                    spawnPoint.Y -= 1;
-
-                curRockPos = spawnPoint;
+                    curRockPos.Y -= 1;
 
                 //move:
                 //gas, then drop, until collisions
@@ -451,32 +449,21 @@ namespace ConsoleApp1.Solutions
                         //maybe we got ourselves a false positive collision...
                         if (board.CheckCollision(new Point64(newX, curRockPos.Y), rock, true, posAdjust))
                         {
-                            newX = curRockPos.X;
-                            //Console.WriteLine("   --Rock X moves by " + posAdjust + " to x: " + curRockPos.X + " not doing, collided");                            
-                        }
-                        else
-                        {
-                            //Console.WriteLine("   --Rock X moves by " + posAdjust + " to x: " + newX);
+                            newX = curRockPos.X;                     
                         }
                     }
 
                     curRockPos.X = newX;
-
-                    
 
                     //gravity.. lets try to go down... assume we are not colliding on y until we move...
                     //danger zone!
                     if (!board.CheckCollision(new Point64(curRockPos.X, curRockPos.Y - 1), rock, false, -1))
                     {
                         curRockPos.Y -= 1;
-                        //Console.WriteLine("   --Rock Y moves by -1 to y: " + curRockPos.Y);
                     }
                     else //rock pos is at the spot we would overlap on next step
                     {
-                        //Console.WriteLine("   --Rock Y coms to rest at y: " + curRockPos.Y);
-                        
                         board.AddRestingRock(curRockPos, rock);
-                        
                         break;
                     }
 
@@ -486,40 +473,13 @@ namespace ConsoleApp1.Solutions
 
             } //rocks
 
-            Console.WriteLine("Cycle Search");
-            board.SearchForCycle();
-
             Console.WriteLine("Highest solid point: " + (board.CurMaxHeight - 1) + " total board size: " + board.Heights.Count);
 
-            //NEW MAX MATCHLEN --> starting at: 349 and 3127 delta is: 2778 maxMatchLen: 1588832
-            //hrm, need to know how many rocks dropped... to make this cycle...
-            Int64 cycleLen = 2778;
+            Console.WriteLine("Predicted height: " + predictedHeight + "  is off by :" + (predictedHeight - (board.CurMaxHeight - 1)));
+            Console.WriteLine("Cycle Search");
+           // board.SearchForCycle();
 
-            Int64 massiveNumber = 1000000000000;
-
-            /*
-                Rock num at height: 347   is  227
-                Rock num at height: 349   is  228
-                Rock num at height: 351   is  229
-                Rock num at height: 3125   is  1973
-                Rock num at height: 3129   is  1974
-            */
-            double droppedPerCycle = 1973.5 - 228;
-            Int64 heightPerCycle = 3127 - (349 - 1);
-
-            Int64 curHeight = 349 - 1;
-            Int64 dropped = 228;
-
-            int numCycles = (int)((massiveNumber - dropped) / droppedPerCycle);
-            int remaining = (int)((massiveNumber - dropped) % droppedPerCycle);
-
-            curHeight += (numCycles * heightPerCycle);
-
-            //782 leftovert rocks, add the height at 782 rocks
-            curHeight += 1242;
-
-
-            Console.WriteLine("Projected height at the crazy high number: " + curHeight + "  with " + remaining + " rocks left to drop...");
+            //Console.WriteLine("Projected height at the crazy high number: " + curHeight + "  with " + remaining + " rocks left to drop...");
             //1591977077347  is too low -- 1973
             //1590154551001   too low...  --1975
             //1590726960846 too low...
