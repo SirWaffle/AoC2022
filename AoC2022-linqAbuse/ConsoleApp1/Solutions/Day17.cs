@@ -12,38 +12,28 @@ namespace ConsoleApp1.Solutions
         //hard coded rock formations..
         //make em all 4x4
         //aligned left/top
-        class RockFormation
+        struct RockFormation
         {
-            string rockStr;
             public Point wh;
             public BitField[] bitsPerRow;
+            public Int64 allBits;
 
             public RockFormation(string rock, int w, int h)
             {
-                rockStr = rock;
                 wh = new Point(w, h);
 
-                int maxBit = 0;
                 bitsPerRow = new BitField[h];
                 for(int y = 0; y < h; ++y)
                 {
                     for (int x = 0; x < w; ++x)
                     {
-                        if (IsSolidAtPoint(x, y))
+                        if (IsSolidAtPoint(x, y, rock))
                         {
                             bitsPerRow[y][x] = true;
-                            if(maxBit < x)
-                            {
-                                maxBit = x;
-                            }
                         }
                     }
-                }
-
-                //need to jsutify the bits to the left...so taht the first 1 is on the leftside at pos 0 for the board.. which is 7 wide...
-                for(int i =0; i < bitsPerRow.Length;++i)
-                {
-                    //bitsPerRow[i].bits = bitsPerRow[i].bits << (Board.Width - maxBit - 1);
+                    allBits = allBits << 7;
+                    allBits |= bitsPerRow[y].bits;
                 }
             }
 
@@ -53,12 +43,12 @@ namespace ConsoleApp1.Solutions
             }
 
             //expects 0 based..
-            bool IsSolidAtPoint(int x, int y)
+            bool IsSolidAtPoint(int x, int y, string rock)
             {
                 int ind = (y * wh.X) + x;
-                if(rockStr.Length > ind)
+                if(rock.Length > ind)
                 {
-                    if (rockStr[ind] == '#')
+                    if (rock[ind] == '#')
                         return true;
                     return false;
                 }
@@ -67,7 +57,7 @@ namespace ConsoleApp1.Solutions
             }
         }
 
-        public static string ToBinary(int myValue)
+        public static string ToBinary(uint myValue)
         {
             string binVal = Convert.ToString(myValue, 2);
             int bits = 0;
@@ -108,7 +98,7 @@ namespace ConsoleApp1.Solutions
             }
 
 
-            public int bits = 0;
+            public UInt32 bits = 0;
 
             public bool this[int i]
             {
@@ -154,14 +144,13 @@ namespace ConsoleApp1.Solutions
             }
         }
 
-        class Board
+        sealed class Board
         {
             public const int Width = 7;
-            public static Int64 FLoorHeight = 0;
 
             public Int64 w { get { return Width; } }
 
-            public Int64 CurMaxHeight = FLoorHeight;
+            public Int64 CurMaxHeight = 0;
 
             public List<BitField> Heights = new();
 
@@ -228,25 +217,31 @@ namespace ConsoleApp1.Solutions
 
             public void Clean()
             {
-                var highestFull = maxHeights.Min() - 5;
-                if (highestFull > yIndexOffset)
+                int highestFull = 0;
+                for (int y = Heights.Count - 1; y > 0 ; y--)
+                {
+                    if( (Heights[y].bits & 0b_0111_1111) == 0b_0111_1111)
+                    {
+                        //row is filled
+                        highestFull = y;
+                        break;
+                    }
+                }
+
+                //want one less, at least
+                highestFull -= 1;
+
+                if (highestFull > 0)
                 {
                     Console.WriteLine("Cleaning inaccessible locations....");
-                    
-                    int actualInd = GetAdjustedYIndex(highestFull);
 
                     //visualize before we lkay waste to it:
-                    //for (int i = 0; i < actualInd; ++i)
+                    //for (int i = highestFull; i > 0; i--)
                     //    Console.WriteLine(ToBinary(Heights[i].bits).Replace('0', ' ').Replace('1', '#'));
 
-                    Heights.RemoveRange(0, actualInd);
-                    yIndexOffset += actualInd;
+                    Heights.RemoveRange(0, highestFull - 1);
+                    yIndexOffset += highestFull;
                 }
-            }
-
-            public void VisualizeTop()
-            {
-                Console.WriteLine(ToBinary(Heights.Last().bits));//.ToString("D8"));
             }
 
             public bool CheckCollision(Point64 pos, RockFormation rock, bool horizontalMove, int moveAmount)
@@ -278,25 +273,13 @@ namespace ConsoleApp1.Solutions
                         Heights.Add(new BitField());
 
                     BitField bits = Heights[GetAdjustedYIndex(y)];
-
-                    //todo, bad math...? at least behaving differently                    
+                 
                     Int64 rockBY = Math.Abs(y - (pos.Y));
-                    int newVal = bits.bits | ( rock.bitsPerRow[rockBY].bits << (int)pos.X);
-                    bits.bits = newVal;
-                    Heights[GetAdjustedYIndex(y)] = bits;
-
-                    if(bits.bits > 0) //update our maxheights values for cleaning...
-                    {
-                        for(int x = 0; x < 8; ++x)
-                        {                            
-                            if(bits[x] == true)
-                                maxHeights[x] = Math.Max(y, maxHeights[x]);
-                        }
-                    }               
+                    bits.bits = bits.bits | ( rock.bitsPerRow[rockBY].bits << (int)pos.X);
+                    Heights[GetAdjustedYIndex(y)] = bits;             
                 }//y
 
-                //update heightmap and max height
-                CurMaxHeight = Math.Max(CurMaxHeight, pos.Y + 1); // Heights.Count;
+                CurMaxHeight = Math.Max(CurMaxHeight, pos.Y + 1);
             }
         }
 
@@ -354,9 +337,13 @@ namespace ConsoleApp1.Solutions
 
             int trackRockheights = 2;
 
+            int nextClean = 0;
+
             int curCycles = 0;
+            int rockInd = 0;
             for (Int64 curRockNum = 0; curRockNum < numRocksToDrop ; ++curRockNum)
             {
+                /*
                 if(trackRockheights > 0)
                     heightAtRockNum.Add(board.Heights.Count() - 1);
 
@@ -403,14 +390,16 @@ namespace ConsoleApp1.Solutions
                             //not: 1591977077354  //+1
                             //not: 1591977077355  //+2
                             //not: 1591977077356  //+3
-                            //1591977077357  //+4 maybe?
+                            //not: 1591977077357  //+4 maybe?
                         }
                     }
-                }
+                }*/
 
-                //lets clear out our map of values as we go... im sure we can ditch some pretty far down...                
-                if (curRockNum > 0 && curRockNum % 100000000 == 0)
+                //lets clear out our map of values as we go... im sure we can ditch some pretty far down...
+                ++nextClean;
+                if (nextClean >= 1000000000)
                 {
+                    nextClean = 0;
                     float percentDOne = (((float)curRockNum + 1) / (float)numRocksToDrop);
                     float elapsed = ((float)sw.ElapsedMilliseconds / (float)1000);
                     float timeRemaining = 100.0f / percentDOne;
@@ -420,8 +409,11 @@ namespace ConsoleApp1.Solutions
                     board.Clean(); 
                 }
 
-
-                RockFormation rock = rocks[(int)(curRockNum % rocks.Count)];
+                RockFormation rock = rocks[rockInd];
+                ++rockInd;
+                if(rockInd > rocks.Count - 1)
+                    rockInd = 0;
+                          
                 //spawn:
                 //  each rock appears so that its left edge is two units away from the left wall
                 //  and its bottom edge is three units above the highest rock in the room (or the floor, if there isn't one).
@@ -433,38 +425,32 @@ namespace ConsoleApp1.Solutions
                 //gas, then drop, until collisions
                 for (;;)
                 {
-                    int posAdjust = gasDirs[(int)(curGasPos % gasDirs.Count)];
-                    curGasPos++;
+                    int posAdjust = gasDirs[(int)curGasPos];
 
                     //left/right collision... need to check if we can move left/right, or if that would move us into collision...
                     //bounds with board
                     Int64 newX = curRockPos.X + posAdjust;
-                    if (newX < 0)
-                        newX = 0;
-                    if (newX + (rock.wh.X - 1) >= board.w)
-                        newX = board.w - rock.wh.X;
-                    else
+                    if (!(   newX < 0 
+                          || newX + (rock.wh.X - 1) >= board.w
+                          || board.CheckCollision(new Point64(newX, curRockPos.Y), rock, true, posAdjust)))
                     {
-                        //now check if we are now colliding with other blocks...
-                        //maybe we got ourselves a false positive collision...
-                        if (board.CheckCollision(new Point64(newX, curRockPos.Y), rock, true, posAdjust))
-                        {
-                            newX = curRockPos.X;                     
-                        }
+                        curRockPos.X = newX;
                     }
 
-                    curRockPos.X = newX;
+                    curGasPos++;
+                    if (curGasPos >= gasDirs.Count)
+                        curGasPos = 0;
 
                     //gravity.. lets try to go down... assume we are not colliding on y until we move...
                     //danger zone!
-                    if (!board.CheckCollision(new Point64(curRockPos.X, curRockPos.Y - 1), rock, false, -1))
-                    {
-                        curRockPos.Y -= 1;
-                    }
-                    else //rock pos is at the spot we would overlap on next step
+                    if (board.CheckCollision(new Point64(curRockPos.X, curRockPos.Y - 1), rock, false, -1))
                     {
                         board.AddRestingRock(curRockPos, rock);
-                        break;
+                        break;  
+                    }
+                    else
+                    {
+                        curRockPos.Y -= 1;
                     }
 
 
