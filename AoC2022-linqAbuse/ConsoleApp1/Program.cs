@@ -5,7 +5,7 @@ using System.Net.Http.Headers;
 string inputFile = @"InputFiles/Input17_1.txt";
 
 //for doing a specific puzzle:
-var puzz = new Day17();
+var puzz = new Day17Opti();
 puzz.InputFile = inputFile;
 
 var sw = Stopwatch.StartNew();

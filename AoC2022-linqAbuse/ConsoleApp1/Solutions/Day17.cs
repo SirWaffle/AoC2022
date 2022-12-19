@@ -335,11 +335,8 @@ namespace ConsoleApp1.Solutions
 
             var sw = Stopwatch.StartNew();
 
-            int trackRockheights = 2;
 
             int nextClean = 0;
-
-            int curCycles = 0;
             int rockInd = 0;
             for (Int64 curRockNum = 0; curRockNum < numRocksToDrop ; ++curRockNum)
             {
