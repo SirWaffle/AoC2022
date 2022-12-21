@@ -95,23 +95,6 @@ namespace ConsoleApp1.Solutions
 
         }
 
-        struct Factory
-        {
-            public enum State
-            {
-                Ready,
-                StartConstructing,
-                EndConstructing,
-            }
-
-            public State state;
-
-            public override string ToString()
-            {
-                return "Factory: " + state.ToString();
-            }
-        }
-
         struct Sim
         {
             public Blueprint blueprint;
@@ -121,17 +104,13 @@ namespace ConsoleApp1.Solutions
 
             public int[] oreCounts = new int[ELEMENT_COUNT];
 
-            public List<Factory> activeFactories = new();
-
-            //public List<int> bpEntryBuildOrder = new();
-
             public int currentScore;
             public int time;
             public int simNum;
-            public int simID;
+            public UInt64 simID;
 
 
-            public static int simId = 1;
+            public static UInt64 simId = 1;
 
             public Sim()
             { }
@@ -155,8 +134,7 @@ namespace ConsoleApp1.Solutions
                     sim.botsByType[i] = botsByType[i];
                 }
 
-                sim.activeFactories = new(activeFactories);
-                //sim.bpEntryBuildOrder= new(bpEntryBuildOrder);
+
                 sim.time = time;
                 sim.simNum= simNum;
                 sim.simID = simId++;
@@ -186,48 +164,23 @@ namespace ConsoleApp1.Solutions
             int[] maxFoundPerDepth= new int[26];
             int totalMaxFound = 0;
 
-            public int discardedBranches = 0;
+            public UInt64 discardedBranches = 0;
 
            
             public ThreadSafeSimStats()
             {
                 mainThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
             }
-
-            //TODO: no idea how to calculate these.
-            /*
-            public bool CheckAgainstMax(int depth, int geodeBotCount, int geodeCount, int depthLimit)
-            {
-                //score it
-                int remainingTime = (depthLimit - depth);
-                int possibleBots = geodeBotCount;
-                int possibleBotsGeodes = 0;
-                for(int i = 0; i < remainingTime; i++)
-                {
-                    possibleBots++;
-                    possibleBotsGeodes += possibleBots;
-
-                }
-                int possibleTotalFull = geodeCount + possibleBotsGeodes;
-
-                if (possibleTotalFull < totalMaxFound)
-                    return false;
-
-                lock (maxLockObj)
-                {
-                    if(possibleTotalFull > totalMaxFound)
-                    {
-                        totalMaxFound = possibleTotalFull;
-                        Console.WriteLine("new depth max reached: " + maxFoundPerDepth[depth]);
-                    }
-                }
-
-                return true; //even or so
-            }*/
-
             
             public bool CheckAgainstMax(ref Sim sim, int depth, int depthLimit, out int score)
             {
+                //if we are at depth 24 with no bots, just exit, we're heading towards 0 anyways
+                if (depth >= 24 && sim.botsByType[(int)ElementType.Geode] == 0)
+                {
+                    score = 0;
+                    return false;
+                }
+
                 int combinedScore = 0;
 
                 for (int i = (int)ElementType.Geode; i < ELEMENT_COUNT; ++i)
@@ -268,7 +221,7 @@ namespace ConsoleApp1.Solutions
                         maxFoundPerDepth[depth] = combinedScore;
                         Console.Write("depth max reached: " + depth + "   max: " +  maxFoundPerDepth[depth]);
                         Console.WriteLine(String.Format(", in sim {0} branch {1} with bp num {2},  geodes {3}, geobots {4}",
-                                maxGeodesSim.simNum, maxGeodesSim.simID, maxGeodesSim.blueprint.num, maxGeodesSim.oreCounts[(int)ElementType.Geode], maxGeodesSim.botsByType[(int)ElementType.Geode]));
+                                sim.simNum, sim.simID, sim.blueprint.num, sim.oreCounts[(int)ElementType.Geode], sim.botsByType[(int)ElementType.Geode]));
                     }
                 }
 
@@ -280,9 +233,6 @@ namespace ConsoleApp1.Solutions
                 lock (taskListLockObj)
                 {
                     crunchingTasks.Add(work);
-                    //Process.GetCurrentProcess().Threads[curThread].ProcessorAffinity = (IntPtr) 1 << curCoreAffinity;
-                    //curCoreAffinity += 1;
-                    //curThread += 1;
                 }
             }
 
@@ -316,7 +266,7 @@ namespace ConsoleApp1.Solutions
                         //TODO concurrency safety, good ol semaphore slim
                         maxGeodesSim = curSim;
                         maxGeodes = curGeodes;
-                        Console.WriteLine(String.Format("New mx geode count found in sim {0} branch {1} with blueprint num {2} with geodes {3} at depth {4}",
+                        Console.WriteLine(String.Format("*MAX GEODES* New mx geode count found in sim {0} branch {1} with blueprint num {2} with geodes {3} at depth {4}",
                                                         maxGeodesSim.simNum, maxGeodesSim.simID, maxGeodesSim.blueprint.num, maxGeodesSim.oreCounts[(int)ElementType.Geode], curSim.time));
                         return true;
                     }
@@ -402,7 +352,7 @@ namespace ConsoleApp1.Solutions
                 {
                     Thread.Sleep(10000);
                     simStats.ClearFInishedWork();
-                    Console.WriteLine("Crunching with: " + simStats.crunchingTasks.Count() + " threads, current simId: " + Sim.simId + " number discarded: " + simStats.discardedBranches);
+                    Console.WriteLine("Crunching bp " + bpInd + " with: " + simStats.crunchingTasks.Count() + " threads, current simId: " + Sim.simId + " number discarded: " + simStats.discardedBranches);
                     if (Task.WaitAll(simStats.crunchingTasks.ToArray(), 10))
                     {
                         Sim.simId = 0;
@@ -425,7 +375,12 @@ namespace ConsoleApp1.Solutions
                 Console.WriteLine("Blueprint " + i + " max geodes = " + simPerBluePrint[i].oreCounts[(int)ElementType.Geode]);
             }
 
-            Console.WriteLine("Score: " + sum);            
+            Console.WriteLine("Score: " + sum);
+
+            _ = Console.ReadLine();
+            _ = Console.ReadLine();
+            _ = Console.ReadLine();
+            _ = Console.ReadLine();
         }
 
         void CrunchBlueprint(int simNum, Blueprint bp, ThreadSafeSimStats simStats)
@@ -433,10 +388,6 @@ namespace ConsoleApp1.Solutions
             Sim startSim = new();
             startSim.blueprint = bp;
             startSim.simNum = simNum;
-
-            Factory f = new Factory();
-            f.state = Factory.State.Ready;
-            startSim.activeFactories.Add(f);
 
             //we start with 1 ore robot
             Robot rb = new();
@@ -491,112 +442,12 @@ namespace ConsoleApp1.Solutions
             }
             return score;
         }
-        /*
-        //recursive
-        void SearchTask(Sim curSim, int depthLimit, int maxSearchedDepth, ThreadSafeSimStats simStats, int taskSplitDepth)
-        {
-
-            //collect and progress builds
-            StepRobots(ref curSim);
-            //LogSimState(curSim);
-            curSim.time += 1;
-
-            //lets see if we should exit...
-            //maybe this part is wrong?
-            int score = 0;
-            bool onTarget = simStats.CheckAgainstMax(ref curSim, curSim.time, depthLimit, out score);
-
-            if (!onTarget)
-            {
-                //we're done, probably
-                simStats.discardedBranches++;
-                return;
-            }
-
-            if (curSim.time > 10 && curSim.oreCounts[(int)ElementType.Geode] > 0) //timeLimit
-            {
-                if (simStats.CheckMax(ref curSim))
-                {
-                }
-            }
-
-            if (curSim.time > depthLimit)
-            {
-                simStats.discardedBranches++;
-                return;
-            }
-
-            StepFactories(ref curSim);
-
-            //find new robots to construct...
-            //we have options here..most expensive to least expensive, etc. 
-            //sound slike we'll be searching this....
-
-            var potentials = GatherAvailableBuilds(ref curSim);
-
-            if (potentials.Count > 0)
-            {
-                //add a new sim step for each possible build...
-                for (int i = potentials.Count - 1; i >= 0; --i)
-                {
-
-                    Sim newSim = curSim.DeepCopy();
-                    //newSim.bpEntryBuildOrder.Add(potentials[i]);
-                    StepBuild(ref newSim, potentials[i]);
-
-                }
-            }
-
-            //shit..might have to let this one build to completion...because no build is a choice
-            //gonna have to reduce this...shiat
-            //StepBuild(curSim, -1);
-            //curSim.bpEntryBuildOrder.Add(-1);
-
-            curSim.currentScore = SimSortScore(curSim);
-
-            if (Thread.CurrentThread.ManagedThreadId == simStats.mainThreadId && simStats.threadLimit > -1)
-            {
-                LinkedList<Sim> newSearch = new();
-                newSearch.AddLast(curSim);
-                //if we split into potentials, just exit this, we need a limit...
-                //need to make my own pool to limit this... how abit this one just stays on the thread its currently on?
-                Task t = Task.Factory.StartNew(
-                    () => { SearchTask(newSearch, depthLimit, maxSearchedDepth, simStats, taskSplitDepth); }
-                    );
-                simStats.AddWork(t);
-            }
-            else
-            {
-                //priority for geode bots
-                if (curSim.botsByType[(int)ElementType.Geode] > 0)
-                {
-                    LinkedListNode<Sim>? insertPoint = search.First;
-
-                    //for(; insertPoint != search.Last && insertPoint != null && insertPoint.Value.botsByType[(int)ElementType.Geode] > curSim.botsByType[(int)ElementType.Geode];)
-                    for (; insertPoint != search.Last && insertPoint != null && insertPoint.Value.currentScore > curSim.currentScore;)
-                    {
-                        insertPoint = insertPoint.Next;
-                    }
-
-                    if (insertPoint != null)
-                        search.AddBefore(insertPoint, curSim);
-                    else
-                        search.AddLast(curSim);
-                }
-                else
-                {
-                    search.AddLast(curSim);
-                }
-            }
-        }
-        */
-
         void SearchTaskLIST(LinkedList<Sim> search, int depthLimit, int maxSearchedDepth, ThreadSafeSimStats simStats, int taskSplitDepth)
         { 
             int switcher = 0;
             while (search.Count > 0)
             {                
-                //ok, running out of memory, lets...go back and forth between high value and low in hopes of culling those branches early
+                //ok, running out of memory....
                 Sim curSim = search.First();
                 //++switcher;
                 if (switcher > 100000)
@@ -670,12 +521,7 @@ namespace ConsoleApp1.Solutions
                     continue;
                 }
 
-                StepFactories(ref curSim);
-
                 //find new robots to construct...
-                //we have options here..most expensive to least expensive, etc. 
-                //sound slike we'll be searching this....
-
                 var potentials = GatherAvailableBuilds(ref curSim);
 
                 if (potentials.Count > 0)
@@ -685,7 +531,6 @@ namespace ConsoleApp1.Solutions
                     {
 
                         Sim newSim = curSim.DeepCopy();
-                        //newSim.bpEntryBuildOrder.Add(potentials[i]);
                         StepBuild(ref newSim, potentials[i]);
 
                         newSim.currentScore = SimSortScore(newSim);
@@ -723,9 +568,6 @@ namespace ConsoleApp1.Solutions
 
                 //shit..might have to let this one build to completion...because no build is a choice
                 //gonna have to reduce this...shiat
-                //StepBuild(curSim, -1);
-                //curSim.bpEntryBuildOrder.Add(-1);
-
                 curSim.currentScore = SimSortScore(curSim);
 
                 if (Thread.CurrentThread.ManagedThreadId == simStats.mainThreadId && simStats.threadLimit > -1)
@@ -741,7 +583,6 @@ namespace ConsoleApp1.Solutions
                 }
                 else
                 {
-                    //priority for geode bots
                     LinkedListNode<Sim>? insertPoint = search.First;
 
                     //for(; insertPoint != search.Last && insertPoint != null && insertPoint.Value.botsByType[(int)ElementType.Geode] > curSim.botsByType[(int)ElementType.Geode];)
@@ -774,10 +615,6 @@ namespace ConsoleApp1.Solutions
                 Console.WriteLine(rb.ToString());
             }
 
-            foreach (var f in sim.activeFactories)
-            {
-                Console.WriteLine(f.ToString());
-            }
         }
 
 
@@ -787,7 +624,7 @@ namespace ConsoleApp1.Solutions
 
             for(int i =0; i < sim.blueprint.entries.Count; i++)
             {
-                //testing this
+                //TODO: testing this
                 if (sim.blueprint.entries[i].type != ElementType.Geode)
                 {
                     if (sim.botsByType[(int)sim.blueprint.entries[i].type] > sim.blueprint.costMax[(int)sim.blueprint.entries[i].type])
@@ -816,54 +653,26 @@ namespace ConsoleApp1.Solutions
 
         void StepBuild(ref Sim sim, int buildIndex)
         {
-            for (int i = 0; i < sim.activeFactories.Count; i++)
+
+            //remove costs from counts
+            foreach (var cost in sim.blueprint.entries[buildIndex].cost)
             {
-                if (sim.activeFactories[i].state != Factory.State.Ready)
-                    continue;
+                sim.oreCounts[(int)cost.type] -= cost.amount;
 
-                //remove costs from counts
-                foreach (var cost in sim.blueprint.entries[buildIndex].cost)
+                if (sim.oreCounts[(int)cost.type] < 0)
                 {
-                    sim.oreCounts[(int)cost.type] -= cost.amount;
-
-                    if(sim.oreCounts[(int)cost.type] < 0)
-                    {
-                        throw new Exception("negative ore count");
-                    }
-                }
-
-                //add the robot as a new active robot, starting construction
-                Robot rb = new();
-                rb.type = sim.blueprint.entries[buildIndex].type;
-                rb.state = Robot.State.StartConstruction;
-
-                sim.activeRobots.Add(rb);
-
-                sim.botsByType[(int)rb.type]++;
-
-                var f = sim.activeFactories[i];
-                f.state = Factory.State.StartConstructing;
-                sim.activeFactories[i] = f;
-            }
-        }
-
-        void StepFactories(ref Sim sim)
-        {
-            for (int i = 0; i < sim.activeFactories.Count; i++)
-            {
-                if (sim.activeFactories[i].state == Factory.State.StartConstructing)
-                {
-                    var f = sim.activeFactories[i];
-                    f.state = Factory.State.EndConstructing;
-                    sim.activeFactories[i] = f;
-                }
-                else if (sim.activeFactories[i].state == Factory.State.EndConstructing)
-                {
-                    var f = sim.activeFactories[i];
-                    f.state = Factory.State.Ready;
-                    sim.activeFactories[i] = f;
+                    throw new Exception("negative ore count");
                 }
             }
+
+            //add the robot as a new active robot, starting construction
+            Robot rb = new();
+            rb.type = sim.blueprint.entries[buildIndex].type;
+            rb.state = Robot.State.StartConstruction;
+
+            sim.activeRobots.Add(rb);
+
+            sim.botsByType[(int)rb.type]++;
         }
 
         void StepRobots(ref Sim sim)
@@ -875,11 +684,12 @@ namespace ConsoleApp1.Solutions
                 if (sim.activeRobots[i].state == Robot.State.StartConstruction)
                 {
                     var rb = sim.activeRobots[i];
-                    rb.state = Robot.State.EndConstruction;
+                    rb.state = Robot.State.Ready;
                     sim.activeRobots[i] = rb;
                 }
 
                 //end goes to ready
+                /*
                 //TODO: debug removal of else: pass by one real quick, too many states i think
                 if (sim.activeRobots[i].state == Robot.State.EndConstruction)
                 {
@@ -887,7 +697,7 @@ namespace ConsoleApp1.Solutions
                     rb.state = Robot.State.Ready;
                     sim.activeRobots[i] = rb;
                 }
-
+                */
                 //constructing goes to collecting
                 if (sim.activeRobots[i].state == Robot.State.Ready)
                 {
