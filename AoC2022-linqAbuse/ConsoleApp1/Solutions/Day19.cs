@@ -16,12 +16,12 @@ namespace ConsoleApp1.Solutions
  
         override public void Part1()
         {
-            Both();
+            Both(false);
         }
 
         override public void Part2()
         {
-            Both();
+            Both(true);
         }
 
         public enum ElementType
@@ -146,7 +146,7 @@ namespace ConsoleApp1.Solutions
         {
             public Sim maxGeodesSim = new();
             public int maxGeodes = 0;
-            public List<int> bestScoresByStep = new(new int[24]);
+            public List<int> bestScoresByStep = new(new int[36]);
 
             object maxLockObj = new();
 
@@ -165,8 +165,14 @@ namespace ConsoleApp1.Solutions
             int totalMaxFound = 0;
 
             public UInt64 discardedBranches = 0;
+            public bool Part2 = false;
 
-           
+            public ThreadSafeSimStats(bool part2)
+            {
+                Part2 = part2;
+                mainThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            }
+
             public ThreadSafeSimStats()
             {
                 mainThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
@@ -175,7 +181,15 @@ namespace ConsoleApp1.Solutions
             public bool CheckAgainstMax(ref Sim sim, int depth, int depthLimit, out int score)
             {
                 //if we are at depth 24 with no bots, just exit, we're heading towards 0 anyways
-                if (depth >= 24 && sim.botsByType[(int)ElementType.Geode] == 0)
+                if(Part2 == true)
+                {
+                    if (depth >= depthLimit - 1 && sim.botsByType[(int)ElementType.Geode] == 0)
+                    {
+                        score = 0;
+                        return false;
+                    }
+                }
+                else if (depth >= 24 && sim.botsByType[(int)ElementType.Geode] == 0)
                 {
                     score = 0;
                     return false;
@@ -183,6 +197,8 @@ namespace ConsoleApp1.Solutions
 
                 int combinedScore = 0;
 
+
+                //TODO: this seems to need to change for part2
                 for (int i = (int)ElementType.Geode; i < ELEMENT_COUNT; ++i)
                 {
                     //score it
@@ -197,7 +213,10 @@ namespace ConsoleApp1.Solutions
                     int possibleTotalFull = possibleBotsGeodes;
 
                     combinedScore = sim.oreCounts[i] + possibleTotalFull;
-
+                    if(Part2)
+                    {
+                        combinedScore = sim.oreCounts[i] + (possibleTotalFull/2);
+                    }
                     //combinedScore += (i * 200) + ( sim.oreCounts[i] * 100 ) +  (possibleTotalFull);
                 }
 
@@ -211,7 +230,7 @@ namespace ConsoleApp1.Solutions
                         return false;
                 }*/
 
-                if (score < maxFoundPerDepth[depth]) //fuzz numbver i guess
+                if (score < maxFoundPerDepth[depth])
                     return false;
 
                 lock (maxLockObj)
@@ -279,7 +298,7 @@ namespace ConsoleApp1.Solutions
         private static Object lockObj = new Object();
 
 
-        void Both()
+        void Both(bool part2)
         {
             List<Blueprint> blueprints = new();
 
@@ -333,18 +352,25 @@ namespace ConsoleApp1.Solutions
             }
 
 
-
-
-
             List<Sim> simPerBluePrint = new();
 
             //find optimal
-            for (int bpInd = 0; bpInd < blueprints.Count; bpInd++)
+            int bluprintsToSearchMax = blueprints.Count;
+            if(part2)
+            {
+                bluprintsToSearchMax = 3;
+            }
+
+            for (int bpInd = 0; bpInd < bluprintsToSearchMax; bpInd++)
             {
 
-                ThreadSafeSimStats simStats = new();
+                ThreadSafeSimStats simStats = new(part2);
 
-                CrunchBlueprint(bpInd, blueprints[bpInd], simStats);
+                int searchDept = 24;
+                if (part2 == true)
+                    searchDept = 32;
+
+                CrunchBlueprint(bpInd, blueprints[bpInd], simStats, searchDept);
 
                 //wait for tasks
                 Console.WriteLine("\n----- waiting for tasks -------");
@@ -369,21 +395,29 @@ namespace ConsoleApp1.Solutions
             Console.WriteLine("\n----- Finished Waiting -------");
 
             int sum = 0;
-            for(int i = 0; i < simPerBluePrint.Count; i++)
+            for (int i = 0; i < bluprintsToSearchMax; i++)
             {
-                sum += ( (i + 1) * simPerBluePrint[i].oreCounts[(int)ElementType.Geode]);
+                if (part2 == false)
+                {
+                    sum += ((i + 1) * simPerBluePrint[i].oreCounts[(int)ElementType.Geode]);
+                }
+                else
+                {
+                    sum *= simPerBluePrint[i].oreCounts[(int)ElementType.Geode];
+                }
                 Console.WriteLine("Blueprint " + i + " max geodes = " + simPerBluePrint[i].oreCounts[(int)ElementType.Geode]);
             }
 
             Console.WriteLine("Score: " + sum);
 
+            //be surei dont accidentaly fat finger some keys and close the console after this thing finishes, ha
             _ = Console.ReadLine();
             _ = Console.ReadLine();
             _ = Console.ReadLine();
             _ = Console.ReadLine();
         }
 
-        void CrunchBlueprint(int simNum, Blueprint bp, ThreadSafeSimStats simStats)
+        void CrunchBlueprint(int simNum, Blueprint bp, ThreadSafeSimStats simStats, int searchDepth)
         {
             Sim startSim = new();
             startSim.blueprint = bp;
@@ -399,7 +433,7 @@ namespace ConsoleApp1.Solutions
 
             LinkedList<Sim> search = new();
             search.AddLast(startSim);
-            int timeLimit = 24;
+            int timeLimit = searchDepth;
 
 
             //well, lets search. 
@@ -504,7 +538,7 @@ namespace ConsoleApp1.Solutions
                 if (curSim.time > maxSearchedDepth)
                 {
                     maxSearchedDepth = curSim.time;
-                    //Console.WriteLine("new depth reached: " + maxSearchedDepth);
+                    Console.WriteLine("new depth reached: " + maxSearchedDepth);
                     //LogSimState(curSim);
                 }
 
@@ -526,7 +560,7 @@ namespace ConsoleApp1.Solutions
 
                 if (potentials.Count > 0)
                 {
-                    //add a new sim step for each possible build...
+                    //add a new sim stekdksdlfsdklflslkslkslkp for each possible build...
                     for(int i = potentials.Count - 1; i >= 0; --i)
                     {
 
@@ -688,16 +722,6 @@ namespace ConsoleApp1.Solutions
                     sim.activeRobots[i] = rb;
                 }
 
-                //end goes to ready
-                /*
-                //TODO: debug removal of else: pass by one real quick, too many states i think
-                if (sim.activeRobots[i].state == Robot.State.EndConstruction)
-                {
-                    var rb = sim.activeRobots[i];
-                    rb.state = Robot.State.Ready;
-                    sim.activeRobots[i] = rb;
-                }
-                */
                 //constructing goes to collecting
                 if (sim.activeRobots[i].state == Robot.State.Ready)
                 {
