@@ -70,10 +70,6 @@ namespace ConsoleApp1.Solutions
 
             public List<MonkE> GetMonkEChainToRoot()
             {
-                if(val < 0)
-                {
-                    Console.WriteLine("Chain has a negative number at " + name + " of " + val);
-                }
                 if (parent == null)
                     return new List<MonkE>() { this } ;
 
@@ -110,17 +106,7 @@ namespace ConsoleApp1.Solutions
                 if (valSet)
                     return val;
 
-                Int64 res =  op[0] switch
-                {
-                    '*' => inputMonkEs[0].DoOp() * inputMonkEs[1].DoOp(),
-                    '/' => inputMonkEs[0].DoOp() / inputMonkEs[1].DoOp(),
-                    '+' => inputMonkEs[0].DoOp() + inputMonkEs[1].DoOp(),
-                    '-' => inputMonkEs[0].DoOp() - inputMonkEs[1].DoOp(),
-                    _ => throw new Exception("invalid op")
-                };
-
-                val = res;
-                valSet = true;
+                SetVal( Day21.DoOp(op, inputMonkEs[0].DoOp(), inputMonkEs[1].DoOp()) );
                 return val;
             }
 
@@ -130,7 +116,7 @@ namespace ConsoleApp1.Solutions
             }
         }
 
-        public Int64 DoOp(string op, Int64 i1, Int64 i2)
+        public static Int64 DoOp(string op, Int64 i1, Int64 i2)
         {
             return  op switch
             {
@@ -147,7 +133,6 @@ namespace ConsoleApp1.Solutions
             var lines = File.ReadAllText(InputFile!).Split("\r\n", StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).ToList();
 
             var nameToMonkE = new Dictionary<string, MonkE>();
-            var nameToListeners = new Dictionary<string, List<string>>();
 
             //cczh: sllz + lgvd
             //zczc: 2
@@ -171,18 +156,6 @@ namespace ConsoleApp1.Solutions
                 }
 
                 nameToMonkE.Add(m.name, m);
-
-                foreach (var listenM in m.inputNames)
-                {
-                    if (!nameToListeners.ContainsKey(listenM))
-                    {
-                        nameToListeners.Add( listenM, new List<string>() {  m.name } );
-                    }
-                    else
-                    {
-                        nameToListeners[listenM].Add( m.name );
-                    }
-                }
             }
 
             //wireup the chain of listeners..
