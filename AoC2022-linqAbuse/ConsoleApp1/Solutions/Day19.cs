@@ -74,34 +74,13 @@ namespace ConsoleApp1.Solutions
             public Blueprint() { }
         }
 
-
-        public struct Robot
-        {
-            public enum State
-            {
-                StartConstruction,
-                EndConstruction,
-                Ready,
-                Collecting
-            }
-
-            public State state;
-            public ElementType type;
-
-            public override string ToString()
-            {
-                return type.ToString() + " Robot: " + state.ToString();
-            }
-
-        }
-
         struct Sim
         {
             public Blueprint blueprint;
 
-            public List<Robot> activeRobots = new(1);
+            public bool hasPendingBot = false;
+            public ElementType pendingBotType;
             public int[] botsByType = new int[ELEMENT_COUNT];
-
             public int[] oreCounts = new int[ELEMENT_COUNT];
 
             public int currentScore;
@@ -119,21 +98,12 @@ namespace ConsoleApp1.Solutions
             {
                 Sim sim = new(); //pool this?
                 sim.blueprint = blueprint;
-                sim.activeRobots = new(activeRobots.Count + 1);
-                sim.activeRobots.AddRange(activeRobots);
-                //weird, editing the clones oreCOunts is modifying both..wtf?
-                sim.oreCounts = new int[ELEMENT_COUNT];
-                for(int i = 0; i < ELEMENT_COUNT; ++i)
-                {
-                    sim.oreCounts[i] = oreCounts[i];
-                }
 
-                sim.botsByType = new int[ELEMENT_COUNT];
-                for (int i = 0; i < ELEMENT_COUNT; ++i)
-                {
-                    sim.botsByType[i] = botsByType[i];
-                }
+                sim.hasPendingBot = hasPendingBot;
+                sim.pendingBotType = pendingBotType;
 
+                oreCounts.CopyTo(sim.oreCounts, 0);
+                botsByType.CopyTo(sim.botsByType, 0);
 
                 sim.time = time;
                 sim.simNum= simNum;
@@ -298,9 +268,6 @@ namespace ConsoleApp1.Solutions
 
         }
 
-        private static Object lockObj = new Object();
-
-
         void Both(bool part2)
         {
             List<Blueprint> blueprints = new();
@@ -373,7 +340,7 @@ namespace ConsoleApp1.Solutions
                 if (part2 == true)
                     searchDept = 32;
 
-                CrunchBlueprint(bpInd, blueprints[bpInd], ThreadSafeSimStats.instance, searchDept);
+                CrunchBlueprint(bpInd, blueprints[bpInd], searchDept);
 
                 //wait for tasks
                 Console.WriteLine("\n----- waiting for tasks -------");
@@ -420,17 +387,14 @@ namespace ConsoleApp1.Solutions
             _ = Console.ReadLine();
         }
 
-        void CrunchBlueprint(int simNum, Blueprint bp, ThreadSafeSimStats simStats, int searchDepth)
+        void CrunchBlueprint(int simNum, Blueprint bp, int searchDepth)
         {
             Sim startSim = new();
             startSim.blueprint = bp;
             startSim.simNum = simNum;
 
             //we start with 1 ore robot
-            Robot rb = new();
-            rb.type = StringToElement("ore");
-            rb.state = Robot.State.Collecting;
-            startSim.activeRobots.Add(rb);
+            startSim.botsByType[(int)ElementType.Ore] = 1;
 
             startSim.time = 1;
 
@@ -440,10 +404,9 @@ namespace ConsoleApp1.Solutions
 
 
             //well, lets search. 
-            //TODO: will want to check for cycles to not search every terrible iteration...
             int maxSearchedDepth = 0;
 
-            SearchTaskLIST(search, timeLimit, maxSearchedDepth, ThreadSafeSimStats.instance, 99999999);// 10);
+            SearchTaskLIST(search, timeLimit, maxSearchedDepth);
         }
 
         //score this sim for insertion order...
@@ -471,7 +434,6 @@ namespace ConsoleApp1.Solutions
                     score += -100 + ((1 * (sim.botsByType[(int)cost2.type] * cost.amount)) * ((int)cost.type + 1));
                 }
             }
-            //score += (variation * 500);
 
             if(score > highestSimScore)
             {
@@ -479,54 +441,19 @@ namespace ConsoleApp1.Solutions
             }
             return score;
         }
-        void SearchTaskLIST(LinkedList<Sim> search, int depthLimit, int maxSearchedDepth, ThreadSafeSimStats simStats, int taskSplitDepth)
+
+        void SearchTaskLIST(LinkedList<Sim> search, int depthLimit, int maxSearchedDepth)
         { 
-            int switcher = 0;
             while (search.Count > 0)
             {                
-                //ok, running out of memory....
                 Sim curSim = search.First();
-                //++switcher;
-                if (switcher > 100000)
-                {
-                    Thread.Sleep(10);
-                    //try quick clean?
-                    if (search.Count > 1000000)
-                    {
-                        LinkedListNode<Sim>? checkPoint = search.Last;
-                        LinkedListNode<Sim>? deletePoint = search.Last;
-
-                        for (; checkPoint != search.First && checkPoint != null; )
-                        {
-                            bool dontDel = ThreadSafeSimStats.instance.CheckAgainstMax(ref checkPoint.ValueRef, checkPoint.Value.time, depthLimit, out _);
-
-                            if (!dontDel)
-                            {
-                                deletePoint = checkPoint;
-                                checkPoint = checkPoint.Previous;
-                                search.Remove(deletePoint);
-                                ThreadSafeSimStats.instance.discardedBranches++;
-                            }
-                            else
-                            {
-                                checkPoint = checkPoint.Previous;
-                            }
-
-                            
-                        }
-                    }
-                    switcher = 0;
-                }
-
                 search.RemoveFirst();
                                
-
                 //collect and progress builds
                 StepRobots(ref curSim);
-                //LogSimState(curSim);
+
                 curSim.time += 1;
 
-                //lets see if we should exit...
                 //maybe this part is wrong?
                 int score = 0;
                 bool onTarget = ThreadSafeSimStats.instance.CheckAgainstMax(ref curSim, curSim.time, depthLimit, out score);
@@ -547,14 +474,12 @@ namespace ConsoleApp1.Solutions
 
                 if (curSim.time > 10 && curSim.oreCounts[(int)ElementType.Geode] > 0) //timeLimit
                 {
-                    if (ThreadSafeSimStats.instance.CheckMax(ref curSim))
-                    {
-                    }
+                    _ = ThreadSafeSimStats.instance.CheckMax(ref curSim);
                 }
 
                 if (curSim.time > depthLimit)
                 {
-                    ThreadSafeSimStats.instance.discardedBranches++;
+                    //end of the line
                     continue;
                 }
 
@@ -563,25 +488,22 @@ namespace ConsoleApp1.Solutions
 
                 if (potentials.Count > 0)
                 {
-                    //add a new sim stekdksdlfsdklflslkslkslkp for each possible build...
+                    //add a new sim for each possible build...
                     for(int i = potentials.Count - 1; i >= 0; --i)
                     {
-
                         Sim newSim = curSim.DeepCopy();
                         StepBuild(ref newSim, potentials[i]);
 
                         newSim.currentScore = SimSortScore(newSim);
 
 
-                        if ( ( Thread.CurrentThread.ManagedThreadId == ThreadSafeSimStats.instance.mainThreadId 
-                               || taskSplitDepth > -1  )
-                            //&& newSim.time == taskSplitDepth 
-                            && ThreadSafeSimStats.instance.threadLimit >= ThreadSafeSimStats.instance.crunchingTasks.Count)
+                        if (Thread.CurrentThread.ManagedThreadId == ThreadSafeSimStats.instance.mainThreadId 
+                            || ThreadSafeSimStats.instance.threadLimit >= ThreadSafeSimStats.instance.crunchingTasks.Count)
                         {
                             LinkedList<Sim> newSearch = new();
                             newSearch.AddLast(newSim);
                             Task t = Task.Factory.StartNew(
-                                () => { SearchTaskLIST(newSearch, depthLimit, maxSearchedDepth, ThreadSafeSimStats.instance, taskSplitDepth); } // -1); }
+                                () => { SearchTaskLIST(newSearch, depthLimit, maxSearchedDepth); } 
                                 , TaskCreationOptions.LongRunning);
                             ThreadSafeSimStats.instance.AddWork(t);
                         }
@@ -607,14 +529,15 @@ namespace ConsoleApp1.Solutions
                 //gonna have to reduce this...shiat
                 curSim.currentScore = SimSortScore(curSim);
 
-                if (Thread.CurrentThread.ManagedThreadId == ThreadSafeSimStats.instance.mainThreadId && ThreadSafeSimStats.instance.threadLimit > -1)
+                if (Thread.CurrentThread.ManagedThreadId == ThreadSafeSimStats.instance.mainThreadId 
+                    || ThreadSafeSimStats.instance.threadLimit >= ThreadSafeSimStats.instance.crunchingTasks.Count )
                 {
                     LinkedList<Sim> newSearch = new();
                     newSearch.AddLast(curSim);
                     //if we split into potentials, just exit this, we need a limit...
                     //need to make my own pool to limit this... how abit this one just stays on the thread its currently on?
                     Task t = Task.Factory.StartNew(
-                        () => { SearchTaskLIST(newSearch, depthLimit, maxSearchedDepth, ThreadSafeSimStats.instance, taskSplitDepth); }
+                        () => { SearchTaskLIST(newSearch, depthLimit, maxSearchedDepth); }
                         , TaskCreationOptions.LongRunning);
                     ThreadSafeSimStats.instance.AddWork(t);
                 }
@@ -643,15 +566,10 @@ namespace ConsoleApp1.Solutions
         {
             Console.WriteLine("\n----- Thread: " + Thread.CurrentThread.ManagedThreadId + " --- Sim " + sim.simNum + " branch " + sim.simID + " at time " + sim.time + " -------");
             for(int i = 0; i < ELEMENT_COUNT; ++i)
-            { 
                 Console.WriteLine("Have: " + ((ElementType)(i)).ToString() + ": " + sim.oreCounts[i]);
-            }
 
-            foreach (var rb in sim.activeRobots)
-            {
-                Console.WriteLine(rb.ToString());
-            }
-
+            for (int i = 0; i < ELEMENT_COUNT; ++i)
+                Console.WriteLine("Bot count: " + ((ElementType)(i)).ToString() + ": " + sim.botsByType[i]);
         }
 
 
@@ -693,53 +611,24 @@ namespace ConsoleApp1.Solutions
 
             //remove costs from counts
             foreach (var cost in sim.blueprint.entries[buildIndex].cost)
-            {
                 sim.oreCounts[(int)cost.type] -= cost.amount;
 
-                if (sim.oreCounts[(int)cost.type] < 0)
-                {
-                    throw new Exception("negative ore count");
-                }
-            }
-
             //add the robot as a new active robot, starting construction
-            Robot rb = new();
-            rb.type = sim.blueprint.entries[buildIndex].type;
-            rb.state = Robot.State.StartConstruction;
-
-            sim.activeRobots.Add(rb);
-
-            sim.botsByType[(int)rb.type]++;
+            sim.pendingBotType = sim.blueprint.entries[buildIndex].type;
+            sim.hasPendingBot = true;            
         }
 
         void StepRobots(ref Sim sim)
         {
+            //collect. TODO: fiond a way to delay one bot when its created...
             //all active robots
-            for (int i = 0; i < sim.activeRobots.Count; i++)
+            for (int i = 0; i < ELEMENT_COUNT; i++)
+                 sim.oreCounts[i] += sim.botsByType[i];
+            
+            if(sim.hasPendingBot)
             {
-                //start goes to end
-                if (sim.activeRobots[i].state == Robot.State.StartConstruction)
-                {
-                    var rb = sim.activeRobots[i];
-                    rb.state = Robot.State.Ready;
-                    sim.activeRobots[i] = rb;
-                }
-
-                //constructing goes to collecting
-                if (sim.activeRobots[i].state == Robot.State.Ready)
-                {
-                    var rb = sim.activeRobots[i];
-                    rb.state = Robot.State.Collecting;
-                    sim.activeRobots[i] = rb;
-                }
-                else
-                {
-                    //collecting gives us ore
-                    if (sim.activeRobots[i].state == Robot.State.Collecting)
-                    {
-                        sim.oreCounts[(int)sim.activeRobots[i].type]++;
-                    }
-                }
+                sim.hasPendingBot = false;
+                sim.botsByType[(int)sim.pendingBotType]++;
             }
         }
 
