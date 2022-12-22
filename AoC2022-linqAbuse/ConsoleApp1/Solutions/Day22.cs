@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using static ConsoleApp1.Utils;
 using static System.Net.Mime.MediaTypeNames;
 
@@ -100,6 +101,15 @@ namespace ConsoleApp1.Solutions
                 if (char.IsAsciiDigit(commandString[i]))
                 {
                     digits += commandString[i];
+
+                    if( i + 1 == commandString.Length)
+                    {
+                        Command command = new();
+                        command.moveAmount = int.Parse(digits);
+                        digits = string.Empty;
+                        command.dir = 0;
+                        commands.Add(command);
+                    }
                 }
                 else
                 {
@@ -122,7 +132,7 @@ namespace ConsoleApp1.Solutions
                 }
             }
 
-            Console.WindowWidth = bounds.Y;
+            Console.WindowWidth = bounds.X + 2;
 
             //put player at starting point
             Player player = new Player();
@@ -136,133 +146,40 @@ namespace ConsoleApp1.Solutions
                 Command cmd = commands[cmdNum];
 
                 //move
-                Point next = new();
                 for(int moveNum = 0; moveNum < cmd.moveAmount; ++moveNum)
                 {
-                    next = player.NextPoint();
-
-                    List<Tile>? tileList = null;
-                    tileMap.TryGetValue(next.Y, out tileList);
+                    Point nextValidPos = player.pos;
 
                     if (player.facing == Player.Facing.Up || player.facing == Player.Facing.Down)
                     {
-                        if (player.pos.X == 95 && player.pos.Y == 149) 
+                        if (!GetNextValidPointY(player, player.NextPoint(), tileMap, bounds, out nextValidPos))
                         {
-                            int x = 0;
-                            ++x;
+                            //cant move this way anymore...we are done
+                            moveNum = cmd.moveAmount;
                         }
-
-                        //if we're outside bounds, wrap...
-                        //TODO: wrap to total top, or wrap within the connected block? ie, in the same room
-                        //lets..wrap in same room. if moving down we search up, if moving up we search down\
-                        //TODO: to find next space on other side of room...scan through valid spots in the width of the room until we hit an invalid, thats probably a room boundary
-                        bool doScan = tileList == null;
-                        if(tileList != null)
-                            doScan = next.X < tileList.First().pos.X || next.X > tileList.Last().pos.X;
-
-                        int lastValidY = -1;
-                        if (doScan)
-                        {
-                            for (int newY = 1; newY <= bounds.Y; newY++)
-                            {
-                                int nextCheck = (next.Y + newY); //when moving down
-                                if (player.facing == Player.Facing.Up)
-                                    nextCheck = next.Y - newY;
-
-                                if (nextCheck < 0)
-                                    nextCheck += bounds.Y;
-                                else if (nextCheck > bounds.Y)
-                                    nextCheck -= bounds.Y;
-
-                                if (tileMap.TryGetValue(nextCheck, out tileList))
-                                {
-                                    if (next.X >= tileList.First().pos.X && next.X <= tileList.Last().pos.X)
-                                    {
-                                        lastValidY = nextCheck;
-                                    }
-                                    else
-                                    {
-                                        next.Y = lastValidY != -1 ? lastValidY : player.pos.Y;
-                                        tileMap.TryGetValue(next.Y, out tileList);
-                                        break;
-                                    }
-                                }
-                                else
-                                {
-                                    throw new Exception("shouldnt get here");
-                                }
-                            }
-
-                        }
-
-                        //now check for a wall, which will block us from wrapping
-                        if (tileList.Where(x => x.pos.X == next.X && x.type == Tile.Type.Wall).Any())
-                        {
-                            //movement blocked, cant move
-                            next = player.pos;
-                            moveNum = cmd.moveAmount; //let us out of this loop, we cant move any farther this way
-                        }
-
-                        //sanity check we arent somewhere we shouldnt be...
-                        tileList = tileMap[next.Y];
-                        if (tileList.Where(x => x.pos.X == next.X && x.type == Tile.Type.Wall).Any())
-                        {
-                            throw new Exception("shouldnt be here, bad pos");
-                        }
-                        //sanity check we arent somewhere we shouldnt be...
-                        if (next.X < tileList.First().pos.X || next.X > tileList.Last().pos.X)
-                        {
-                            throw new Exception("shouldnt be here, bad pos");
-                        }
-
-
                     }
                     else //left right movement
                     {
-                        //collision check, x needs to be between first and last, and not on a wall in there
-                        if (tileList.First().pos.X > next.X)
+                        if(!GetNextValidPointX(player, player.NextPoint(), tileMap, bounds, out nextValidPos))
                         {
-                            next = tileList.Last().pos;
-                        }
-                        else if (tileList.Last().pos.X < next.X)
-                        {
-                            next = tileList.First().pos;
-                        }
-
-                        if (tileList.Where(x => x.pos == next && x.type == Tile.Type.Wall).Any())
-                        {
-                            //movement blocked, cant move
-                            next = player.pos;
-                            moveNum = cmd.moveAmount; //let us out of this loop, we cant move any farther this way
-                        }
-                        //else we are fine to move
-
-                        //sanity check we arent somewhere we shouldnt be...
-                        tileList = tileMap[next.Y];
-                        if (tileList.Where(x => x.pos.X == next.X && x.type == Tile.Type.Wall).Any())
-                        {
-                            throw new Exception("shouldnt be here, bad pos");
-                        }
-                        //sanity check we arent somewhere we shouldnt be...
-                        if (next.X < tileList.First().pos.X || next.X > tileList.Last().pos.X)
-                        {
-                            throw new Exception("shouldnt be here, bad pos");
+                            //cant move this way anymore...we are done
+                            moveNum = cmd.moveAmount;
                         }
                     }
 
                     //move player
-                    if (player.pos != next)
+                    if (player.pos != nextValidPos)
                     {
                         Tile path = new();
                         path.type = Tile.Type.BreadCrumb;
                         path.pos = player.pos;
                         visitedPoints.Add(path);
-                        player.pos = next;
+                        player.pos = nextValidPos;
                     }
 
                     //draw whole map...
                     /*
-                    for (int yDisp = 0; yDisp < bounds.Y; ++yDisp)
+                    for (int yDisp = 0; yDisp < bounds.Y + 1; ++yDisp)
                     {
                         var tileListDisp = tileMap[yDisp];
                         for (int xDisp = 0; xDisp < bounds.X; ++xDisp)
@@ -305,10 +222,12 @@ namespace ConsoleApp1.Solutions
             }            
 
             //draw whole map...
-            for (int yDisp = 0; yDisp < bounds.Y; ++yDisp)
+            for (int yDisp = 0; yDisp < bounds.Y + 2; ++yDisp)
             {
-                var tileList = tileMap[yDisp];
-                for(int xDisp = 0; xDisp < bounds.X; ++xDisp)
+                List<Tile>? tileList = null;
+                tileMap.TryGetValue(yDisp, out tileList);
+
+                for(int xDisp = 0; xDisp < bounds.X + 2; ++xDisp)
                 {
                     var visited = visitedPoints.Where(t => t.pos.X == xDisp && t.pos.Y == yDisp ).Select(t => t.type).ToList();
                     if (visited.Count > 0)
@@ -316,7 +235,7 @@ namespace ConsoleApp1.Solutions
                         if (visited[0] == Tile.Type.BreadCrumb)
                             Console.Write("x");
                     }
-                    else
+                    else if(tileList != null)
                     {
                         var matching = tileList.Where(t => t.pos.X == xDisp).Select(t => t.type).ToList();
                         if (matching.Count == 0)
@@ -348,6 +267,136 @@ namespace ConsoleApp1.Solutions
                 Console.WriteLine("password is too high");
             else if( score <= 75332)
                 Console.WriteLine("password is too low");
+
+            //! 102056
+        }
+
+        bool GetNextValidPointX(Player player, Point next, Dictionary<int, List<Tile>> tileMap, Point bounds, out Point nextValidPos )
+        {
+            var tileList = tileMap[next.Y];
+
+            //collision check, x needs to be between first and last, and not on a wall in there
+            if (tileList.First().pos.X > next.X)
+            {
+                next = tileList.Last().pos;
+            }
+            else if (tileList.Last().pos.X < next.X)
+            {
+                next = tileList.First().pos;
+            }
+
+            if (tileList.Where(x => x.pos == next && x.type == Tile.Type.Wall).Any())
+            {
+                //movement blocked, cant move
+                nextValidPos = player.pos;
+                return false;
+            }
+            //else we are fine to move
+
+            //sanity check we arent somewhere we shouldnt be...
+            tileList = tileMap[next.Y];
+            if (tileList.Where(x => x.pos.X == next.X && x.type == Tile.Type.Wall).Any())
+            {
+                throw new Exception("shouldnt be here, bad pos");
+            }
+            //sanity check we arent somewhere we shouldnt be...
+            if (next.X < tileList.First().pos.X || next.X > tileList.Last().pos.X)
+            {
+                throw new Exception("shouldnt be here, bad pos");
+            }
+
+            nextValidPos = next;
+            return true;
+        }
+
+        bool GetNextValidPointY(Player player, Point next, Dictionary<int, List<Tile>> tileMap, Point bounds, out Point nextValidPos)
+        {
+            if (player.pos.X == 95 && player.pos.Y == 149)
+            {
+                int x = 0;
+                ++x;
+            }
+            //if we're outside bounds, wrap...
+            //TODO: wrap to total top, or wrap within the connected block? ie, in the same room
+            //lets..wrap in same room. if moving down we search up, if moving up we search down\
+            //TODO: to find next space on other side of room...scan through valid spots in the width of the room until we hit an invalid, thats probably a room boundary
+            List<Tile>? tileList = null;
+            tileMap.TryGetValue(next.Y, out tileList);
+
+            if(tileList == null)
+            {
+                Console.Write("Wrapped from Y: " + next.Y);
+                if (next.Y == -1)
+                    next.Y = bounds.Y;
+                if (next.Y > bounds.Y)
+                    next.Y = 0;
+                Console.WriteLine(" to " + next.Y);
+
+                
+                tileMap.TryGetValue(next.Y, out tileList);
+            }
+
+            bool doScan = next.X < tileList.First().pos.X || next.X > tileList.Last().pos.X;
+
+            int lastValidY = -1;
+            if (doScan)
+            {
+                Console.Write("Wrapped from Y: " + next.Y);
+                for (int newY = 1; newY < bounds.Y + 1; newY++)
+                {
+                    int nextCheck = (next.Y + newY); //when moving down
+                    if (player.facing == Player.Facing.Up)
+                        nextCheck = next.Y - newY;
+
+                    if (nextCheck < 0)
+                        nextCheck += (bounds.Y + 1);
+                    else if (nextCheck > bounds.Y)
+                        nextCheck -=  (bounds.Y + 1);
+
+                    if (tileMap.TryGetValue(nextCheck, out tileList))
+                    {
+                        if (next.X >= tileList.First().pos.X && next.X <= tileList.Last().pos.X)
+                        {
+                            lastValidY = nextCheck;
+                        }
+                        else
+                        {
+                            next.Y = lastValidY != -1 ? lastValidY : player.pos.Y;
+                            tileMap.TryGetValue(next.Y, out tileList);
+                            Console.WriteLine(" to " + next.Y);
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        throw new Exception("shouldnt get here");
+                    }
+                }
+
+            }
+
+            //now check for a wall, which will block us from wrapping / moving up / moving down
+            if (tileList.Where(x => x.pos.X == next.X && x.type == Tile.Type.Wall).Any())
+            {
+                //movement blocked, cant move
+                nextValidPos = player.pos;
+                return false;
+            }
+
+            //sanity check we arent somewhere we shouldnt be...
+            tileList = tileMap[next.Y];
+            if (tileList.Where(x => x.pos.X == next.X && x.type == Tile.Type.Wall).Any())
+            {
+                throw new Exception("shouldnt be here, bad pos");
+            }
+            //sanity check we arent somewhere we shouldnt be...
+            if (next.X < tileList.First().pos.X || next.X > tileList.Last().pos.X)
+            {
+                throw new Exception("shouldnt be here, bad pos");
+            }
+
+            nextValidPos = next;
+            return true;
         }
 
         struct Command
@@ -365,9 +414,11 @@ namespace ConsoleApp1.Solutions
         {
             public enum Type
             {
+                WalkableEdge,
                 Walkable,
                 Wall,
                 BreadCrumb,
+                WrapedPath
             }
 
             public Type type;
