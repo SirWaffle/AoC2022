@@ -142,8 +142,12 @@ namespace ConsoleApp1.Solutions
             }
         }
 
+
+        //is this thing being *copied* uniquely to different threads? what is going on here...
         class ThreadSafeSimStats
         {
+            public static ThreadSafeSimStats instance;
+
             public Sim maxGeodesSim = new();
             public int maxGeodes = 0;
             public List<int> bestScoresByStep = new(new int[36]);
@@ -154,14 +158,14 @@ namespace ConsoleApp1.Solutions
 
             int curCoreAffinity = 1;
             int curThread = 1;
-            public int threadLimit = 12;
+            public int threadLimit = 7;
 
             public readonly int mainThreadId;
 
             object taskListLockObj = new();
 
             object maxPerDepthLock = new();
-            int[] maxFoundPerDepth= new int[26];
+            int[] maxFoundPerDepth= new int[36];
             int totalMaxFound = 0;
 
             public UInt64 discardedBranches = 0;
@@ -205,7 +209,7 @@ namespace ConsoleApp1.Solutions
                     int remainingTime = (depthLimit - depth);
                     int possibleBots = sim.botsByType[i];
                     int possibleBotsGeodes = 0;
-                    for (int rt = 0; rt < remainingTime; rt++)
+                    for (int rt = 0; rt <= remainingTime; rt++)
                     {                        
                         possibleBotsGeodes += possibleBots;
                         possibleBots++;
@@ -215,23 +219,22 @@ namespace ConsoleApp1.Solutions
                     combinedScore = sim.oreCounts[i] + possibleTotalFull;
                     if(Part2)
                     {
-                        combinedScore = sim.oreCounts[i] + (possibleTotalFull/2);
+                        combinedScore = sim.oreCounts[i] + (possibleTotalFull);
                     }
-                    //combinedScore += (i * 200) + ( sim.oreCounts[i] * 100 ) +  (possibleTotalFull);
                 }
 
                 score = combinedScore;
 
-                //TODO: testing
-                /*
-                for (int i = depth; i < depthLimit; ++i)
+                if (Part2)
                 {
-                    if (score < maxFoundPerDepth[i])
+                    if (score < maxFoundPerDepth[depth] - 10)
                         return false;
-                }*/
-
-                if (score < maxFoundPerDepth[depth])
-                    return false;
+                }
+                else
+                {
+                    if (score < maxFoundPerDepth[depth])
+                        return false;
+                }
 
                 lock (maxLockObj)
                 {
@@ -358,28 +361,28 @@ namespace ConsoleApp1.Solutions
             int bluprintsToSearchMax = blueprints.Count;
             if(part2)
             {
-                bluprintsToSearchMax = 3;
+                bluprintsToSearchMax = Math.Min(3, blueprints.Count);
             }
 
             for (int bpInd = 0; bpInd < bluprintsToSearchMax; bpInd++)
             {
 
-                ThreadSafeSimStats simStats = new(part2);
+                ThreadSafeSimStats.instance = new(part2);
 
                 int searchDept = 24;
                 if (part2 == true)
                     searchDept = 32;
 
-                CrunchBlueprint(bpInd, blueprints[bpInd], simStats, searchDept);
+                CrunchBlueprint(bpInd, blueprints[bpInd], ThreadSafeSimStats.instance, searchDept);
 
                 //wait for tasks
                 Console.WriteLine("\n----- waiting for tasks -------");
                 for (; ; )
                 {
                     Thread.Sleep(10000);
-                    simStats.ClearFInishedWork();
-                    Console.WriteLine("Crunching bp " + bpInd + " with: " + simStats.crunchingTasks.Count() + " threads, current simId: " + Sim.simId + " number discarded: " + simStats.discardedBranches);
-                    if (Task.WaitAll(simStats.crunchingTasks.ToArray(), 10))
+                    ThreadSafeSimStats.instance.ClearFInishedWork();
+                    Console.WriteLine("Crunching bp " + bpInd + " with: " + ThreadSafeSimStats.instance.crunchingTasks.Count() + " threads, current simId: " + Sim.simId + " number discarded: " + ThreadSafeSimStats.instance.discardedBranches);
+                    if (Task.WaitAll(ThreadSafeSimStats.instance.crunchingTasks.ToArray(), 10))
                     {
                         Sim.simId = 0;
                         //done
@@ -387,8 +390,8 @@ namespace ConsoleApp1.Solutions
                     }
                 }
 
-                simPerBluePrint.Add(simStats.maxGeodesSim);
-                LogSimState(ref simStats.maxGeodesSim);
+                simPerBluePrint.Add(ThreadSafeSimStats.instance.maxGeodesSim);
+                LogSimState(ref ThreadSafeSimStats.instance.maxGeodesSim);
             }
 
 
@@ -440,7 +443,7 @@ namespace ConsoleApp1.Solutions
             //TODO: will want to check for cycles to not search every terrible iteration...
             int maxSearchedDepth = 0;
 
-            SearchTaskLIST(search, timeLimit, maxSearchedDepth, simStats, 99999999);// 10);
+            SearchTaskLIST(search, timeLimit, maxSearchedDepth, ThreadSafeSimStats.instance, 99999999);// 10);
         }
 
         //score this sim for insertion order...
@@ -495,14 +498,14 @@ namespace ConsoleApp1.Solutions
 
                         for (; checkPoint != search.First && checkPoint != null; )
                         {
-                            bool dontDel = simStats.CheckAgainstMax(ref checkPoint.ValueRef, checkPoint.Value.time, depthLimit, out _);
+                            bool dontDel = ThreadSafeSimStats.instance.CheckAgainstMax(ref checkPoint.ValueRef, checkPoint.Value.time, depthLimit, out _);
 
                             if (!dontDel)
                             {
                                 deletePoint = checkPoint;
                                 checkPoint = checkPoint.Previous;
                                 search.Remove(deletePoint);
-                                simStats.discardedBranches++;
+                                ThreadSafeSimStats.instance.discardedBranches++;
                             }
                             else
                             {
@@ -526,32 +529,32 @@ namespace ConsoleApp1.Solutions
                 //lets see if we should exit...
                 //maybe this part is wrong?
                 int score = 0;
-                bool onTarget = simStats.CheckAgainstMax(ref curSim, curSim.time, depthLimit, out score);
+                bool onTarget = ThreadSafeSimStats.instance.CheckAgainstMax(ref curSim, curSim.time, depthLimit, out score);
                 
                 if (!onTarget)
                 {
                     //we're done, probably
-                    simStats.discardedBranches++;
+                    ThreadSafeSimStats.instance.discardedBranches++;
                     continue;
                 }
 
                 if (curSim.time > maxSearchedDepth)
                 {
                     maxSearchedDepth = curSim.time;
-                    Console.WriteLine("new depth reached: " + maxSearchedDepth);
+                    //Console.WriteLine("new depth reached: " + maxSearchedDepth);
                     //LogSimState(curSim);
                 }
 
                 if (curSim.time > 10 && curSim.oreCounts[(int)ElementType.Geode] > 0) //timeLimit
                 {
-                    if (simStats.CheckMax(ref curSim))
+                    if (ThreadSafeSimStats.instance.CheckMax(ref curSim))
                     {
                     }
                 }
 
                 if (curSim.time > depthLimit)
                 {
-                    simStats.discardedBranches++;
+                    ThreadSafeSimStats.instance.discardedBranches++;
                     continue;
                 }
 
@@ -570,17 +573,17 @@ namespace ConsoleApp1.Solutions
                         newSim.currentScore = SimSortScore(newSim);
 
 
-                        if ( ( Thread.CurrentThread.ManagedThreadId == simStats.mainThreadId 
+                        if ( ( Thread.CurrentThread.ManagedThreadId == ThreadSafeSimStats.instance.mainThreadId 
                                || taskSplitDepth > -1  )
                             //&& newSim.time == taskSplitDepth 
-                            && simStats.threadLimit >= simStats.crunchingTasks.Count)
+                            && ThreadSafeSimStats.instance.threadLimit >= ThreadSafeSimStats.instance.crunchingTasks.Count)
                         {
                             LinkedList<Sim> newSearch = new();
                             newSearch.AddLast(newSim);
                             Task t = Task.Factory.StartNew(
-                                () => { SearchTaskLIST(newSearch, depthLimit, maxSearchedDepth, simStats, taskSplitDepth); } // -1); }
-                                );
-                            simStats.AddWork(t);
+                                () => { SearchTaskLIST(newSearch, depthLimit, maxSearchedDepth, ThreadSafeSimStats.instance, taskSplitDepth); } // -1); }
+                                , TaskCreationOptions.LongRunning);
+                            ThreadSafeSimStats.instance.AddWork(t);
                         }
                         else
                         {
@@ -604,16 +607,16 @@ namespace ConsoleApp1.Solutions
                 //gonna have to reduce this...shiat
                 curSim.currentScore = SimSortScore(curSim);
 
-                if (Thread.CurrentThread.ManagedThreadId == simStats.mainThreadId && simStats.threadLimit > -1)
+                if (Thread.CurrentThread.ManagedThreadId == ThreadSafeSimStats.instance.mainThreadId && ThreadSafeSimStats.instance.threadLimit > -1)
                 {
                     LinkedList<Sim> newSearch = new();
                     newSearch.AddLast(curSim);
                     //if we split into potentials, just exit this, we need a limit...
                     //need to make my own pool to limit this... how abit this one just stays on the thread its currently on?
                     Task t = Task.Factory.StartNew(
-                        () => { SearchTaskLIST(newSearch, depthLimit, maxSearchedDepth, simStats, taskSplitDepth); }
-                        );
-                    simStats.AddWork(t);
+                        () => { SearchTaskLIST(newSearch, depthLimit, maxSearchedDepth, ThreadSafeSimStats.instance, taskSplitDepth); }
+                        , TaskCreationOptions.LongRunning);
+                    ThreadSafeSimStats.instance.AddWork(t);
                 }
                 else
                 {
