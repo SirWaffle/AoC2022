@@ -82,7 +82,7 @@ namespace ConsoleApp1
             }
         }
 
-        public struct Point
+        public struct Point: IComparable
         {
             public int X = 0;
             public int Y = 0;
@@ -116,6 +116,27 @@ namespace ConsoleApp1
             public override string ToString()
             {
                 return "(" + X + "," + Y + ")";
+            }
+
+            public override int GetHashCode()
+            {
+                return (X * 1000000 + Y);
+            }
+
+            int IComparable.CompareTo(object? obj)
+            {
+                if (obj == null) return 1;
+
+                Point? op = (Point)obj;
+                if (op.HasValue)
+                {
+                    int comp = this.X.CompareTo(op.Value.X);
+                    if (comp == 0)
+                        return this.Y.CompareTo(op.Value.Y);
+                    return comp;
+                }
+                else
+                    throw new ArgumentException("Object is not a Point");
             }
         }
     }
