@@ -1,5 +1,7 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using System.Runtime.Serialization.Formatters;
 using static ConsoleApp1.Utils;
 using static System.Net.Mime.MediaTypeNames;
 
@@ -93,8 +95,28 @@ namespace ConsoleApp1.Solutions
                 }
             }
 
+            int w = 50; //49 or 50
+            int h = 50;
+
+            //0 - 49
+            //50 - 99
+            //100 - 149
+
+
+            //make cube faces out of spots on the map
+            Cube cubeMap = new Cube();
+            cubeMap.faces = new Face[6];
+            cubeMap.faces[0] = new Face(1, new Point(2 * w, 0), new Point(3 * w - 1, h - 1));
+            cubeMap.faces[1] = new Face(2, new Point(w, 0), new Point(2 * w - 1, h - 1));
+            cubeMap.faces[2] = new Face(3, new Point(w, h), new Point(2 * w - 1, 2 * h - 1));
+            cubeMap.faces[3] = new Face(4, new Point(w, 2 * h), new Point(2 * w - 1, 3 * h - 1));
+            cubeMap.faces[4] = new Face(5, new Point(0, 2 * h), new Point(w - 1, 3 * h - 1));
+            cubeMap.faces[5] = new Face(6, new Point(0, 3 * h), new Point(w - 1, 4 * h - 1));
+            cubeMap.LinkEdges();
+     
+
             //turn the commands into a list
-            List<Command> commands = new();
+            List <Command> commands = new();
             string digits = string.Empty;  
             for(int i =0; i < commandString.Length; ++i)
             {
@@ -132,7 +154,7 @@ namespace ConsoleApp1.Solutions
                 }
             }
 
-            Console.WindowWidth = bounds.X + 2;
+            Console.WindowWidth = bounds.X + 5;
 
             //put player at starting point
             Player player = new Player();
@@ -146,24 +168,46 @@ namespace ConsoleApp1.Solutions
                 Command cmd = commands[cmdNum];
 
                 //move
-                for(int moveNum = 0; moveNum < cmd.moveAmount; ++moveNum)
+                for (int moveNum = 0; moveNum < cmd.moveAmount; ++moveNum)
                 {
                     Point nextValidPos = player.pos;
 
                     if (player.facing == Player.Facing.Up || player.facing == Player.Facing.Down)
                     {
-                        if (!GetNextValidPointY(player, player.NextPoint(), tileMap, bounds, out nextValidPos))
+                        if (part2)
                         {
-                            //cant move this way anymore...we are done
-                            moveNum = cmd.moveAmount;
+                            if (!GetNextValidPointYPart2(ref player, player.NextPoint(), cubeMap, tileMap, bounds, out nextValidPos))
+                            {
+                                //cant move this way anymore...we are done
+                                moveNum = cmd.moveAmount;
+                            }
+                        }
+                        else
+                        {
+                            if (!GetNextValidPointY(player, player.NextPoint(), tileMap, bounds, out nextValidPos))
+                            {
+                                //cant move this way anymore...we are done
+                                moveNum = cmd.moveAmount;
+                            }
                         }
                     }
                     else //left right movement
                     {
-                        if(!GetNextValidPointX(player, player.NextPoint(), tileMap, bounds, out nextValidPos))
+                        if (part2)
                         {
-                            //cant move this way anymore...we are done
-                            moveNum = cmd.moveAmount;
+                            if (!GetNextValidPointXPart2(ref player, player.NextPoint(), cubeMap, tileMap, bounds, out nextValidPos))
+                            {
+                                //cant move this way anymore...we are done
+                                moveNum = cmd.moveAmount;
+                            }
+                        }
+                        else
+                        {
+                            if (!GetNextValidPointX(player, player.NextPoint(), tileMap, bounds, out nextValidPos))
+                            {
+                                //cant move this way anymore...we are done
+                                moveNum = cmd.moveAmount;
+                            }
                         }
                     }
 
@@ -177,27 +221,57 @@ namespace ConsoleApp1.Solutions
                         player.pos = nextValidPos;
                     }
 
-                    //draw whole map...
+
+
                     /*
-                    for (int yDisp = 0; yDisp < bounds.Y + 1; ++yDisp)
+
+                    for (int yDisp = 0; yDisp < bounds.Y + 2; ++yDisp)
                     {
-                        var tileListDisp = tileMap[yDisp];
-                        for (int xDisp = 0; xDisp < bounds.X; ++xDisp)
+                        List<Tile>? tileList = null;
+                        tileMap.TryGetValue(yDisp, out tileList);
+
+                        for (int xDisp = 0; xDisp < bounds.X + 2; ++xDisp)
                         {
+                            Face? f = cubeMap.GetFaceForPoint(new Point(xDisp, yDisp));
+
+                            if (false)//f.HasValue)
+                            {
+                                var edgeDir = f.Value.GetEdgeForPoint(new Point(xDisp, yDisp));
+                                if (edgeDir != Face.EdgeDir.None)
+                                {
+                                    //lets write out the number of the connected face
+                                    LinkedEdge? link = cubeMap.GetLinkedEdge(f.Value, edgeDir);
+                                    if (link.HasValue)
+                                    {
+                                        Console.Write(link.Value.face.id);
+                                    }
+                                    else
+                                    {
+                                        Console.Write(f.Value.id);
+                                    }
+                                    continue;
+                                }
+                                else
+                                {
+                                    Console.Write(f.Value.id);
+                                    continue;
+                                }
+                            }
+
                             var visited = visitedPoints.Where(t => t.pos.X == xDisp && t.pos.Y == yDisp).Select(t => t.type).ToList();
                             if (visited.Count > 0)
                             {
                                 if (visited[0] == Tile.Type.BreadCrumb)
                                     Console.Write("x");
                             }
-                            else
+                            else if (tileList != null)
                             {
-                                var matching = tileListDisp.Where(t => t.pos.X == xDisp).Select(t => t.type).ToList();
+                                var matching = tileList.Where(t => t.pos.X == xDisp).Select(t => t.type).ToList();
                                 if (matching.Count == 0)
                                 {
-                                    if (xDisp >= tileListDisp.First().pos.X && xDisp <= tileList.Last().pos.X)
+                                    if (xDisp >= tileList.First().pos.X && xDisp <= tileList.Last().pos.X)
                                     {
-                                        Console.Write(".");
+                                        Console.Write("_");
                                     }
                                     else
                                     {
@@ -205,21 +279,20 @@ namespace ConsoleApp1.Solutions
                                     }
                                 }
                                 else if (matching[0] == Tile.Type.Wall)
-                                    Console.Write("#");
+                                    Console.Write("^");
                                 else if (matching[0] == Tile.Type.Walkable)
-                                    Console.Write(".");
+                                    Console.Write("_");
                             }
                         }
                         Console.Write('\n');
                     }
-
-                    Console.ReadLine();
+                    Console.ReadKey();
                     Console.Clear();*/
                 }
-
                 //then rotate
                 player.Rotate(cmd.dir);
-            }            
+
+            }
 
             //draw whole map...
             for (int yDisp = 0; yDisp < bounds.Y + 2; ++yDisp)
@@ -229,6 +302,32 @@ namespace ConsoleApp1.Solutions
 
                 for(int xDisp = 0; xDisp < bounds.X + 2; ++xDisp)
                 {
+                    Face? f = cubeMap.GetFaceForPoint(new Point(xDisp, yDisp));
+
+                    if (false)//f.HasValue)
+                    {
+                        var edgeDir = f.Value.GetEdgeForPoint(new Point(xDisp, yDisp));
+                        if (edgeDir != Face.EdgeDir.None)
+                        {
+                            //lets write out the number of the connected face
+                            LinkedEdge? link = cubeMap.GetLinkedEdge(f.Value, edgeDir);
+                            if (link.HasValue)
+                            {
+                                Console.Write(link.Value.face.id);
+                            }
+                            else
+                            {
+                                Console.Write(f.Value.id);
+                            }
+                            continue;
+                        }
+                        else
+                        {
+                            Console.Write(f.Value.id);
+                            continue;
+                        }
+                    }
+                   
                     var visited = visitedPoints.Where(t => t.pos.X == xDisp && t.pos.Y == yDisp ).Select(t => t.type).ToList();
                     if (visited.Count > 0)
                     {
@@ -263,12 +362,9 @@ namespace ConsoleApp1.Solutions
 
             int score = (1000 * (player.pos.Y + 1)) + (4 * (player.pos.X+1)) + ((int)player.facing);
             Console.WriteLine("password: " + score);
-            if (score >= 143052)
-                Console.WriteLine("password is too high");
-            else if( score <= 75332)
-                Console.WriteLine("password is too low");
 
-            //! 102056
+            //20460 too low
+            //122178 too low
         }
 
         bool GetNextValidPointX(Player player, Point next, Dictionary<int, List<Tile>> tileMap, Point bounds, out Point nextValidPos )
@@ -311,27 +407,15 @@ namespace ConsoleApp1.Solutions
 
         bool GetNextValidPointY(Player player, Point next, Dictionary<int, List<Tile>> tileMap, Point bounds, out Point nextValidPos)
         {
-            if (player.pos.X == 95 && player.pos.Y == 149)
-            {
-                int x = 0;
-                ++x;
-            }
-            //if we're outside bounds, wrap...
-            //TODO: wrap to total top, or wrap within the connected block? ie, in the same room
-            //lets..wrap in same room. if moving down we search up, if moving up we search down\
-            //TODO: to find next space on other side of room...scan through valid spots in the width of the room until we hit an invalid, thats probably a room boundary
             List<Tile>? tileList = null;
             tileMap.TryGetValue(next.Y, out tileList);
 
             if(tileList == null)
             {
-                Console.Write("Wrapped from Y: " + next.Y);
                 if (next.Y == -1)
                     next.Y = bounds.Y;
                 if (next.Y > bounds.Y)
                     next.Y = 0;
-                Console.WriteLine(" to " + next.Y);
-
                 
                 tileMap.TryGetValue(next.Y, out tileList);
             }
@@ -341,7 +425,6 @@ namespace ConsoleApp1.Solutions
             int lastValidY = -1;
             if (doScan)
             {
-                Console.Write("Wrapped from Y: " + next.Y);
                 for (int newY = 1; newY < bounds.Y + 1; newY++)
                 {
                     int nextCheck = (next.Y + newY); //when moving down
@@ -363,7 +446,6 @@ namespace ConsoleApp1.Solutions
                         {
                             next.Y = lastValidY != -1 ? lastValidY : player.pos.Y;
                             tileMap.TryGetValue(next.Y, out tileList);
-                            Console.WriteLine(" to " + next.Y);
                             break;
                         }
                     }
@@ -399,6 +481,294 @@ namespace ConsoleApp1.Solutions
             return true;
         }
 
+        bool GetNextValidPointXPart2(ref Player player, Point next, Cube cubeMap, Dictionary<int, List<Tile>> tileMap, Point bounds, out Point nextValidPos)
+        {
+            int rot = 0;
+            Point remapped = cubeMap.GetRemappedPoint(player.pos, next, out rot);
+            var tileList = tileMap[remapped.Y];
+
+            if (tileList.Where(x => x.pos.X == remapped.X && x.type == Tile.Type.Wall).Any())
+            {
+                //movement blocked, cant move
+                nextValidPos = player.pos;
+                return false;
+            }
+
+            nextValidPos = remapped;
+
+            //sanity check we arent somewhere we shouldnt be...
+            tileList = tileMap[nextValidPos.Y];
+            if (tileList.Where(x => x.pos.X == remapped.X && x.type == Tile.Type.Wall).Any())
+            {
+                throw new Exception("shouldnt be here, bad pos");
+            }
+            //sanity check we arent somewhere we shouldnt be...
+            if (nextValidPos.X < tileList.First().pos.X || nextValidPos.X > tileList.Last().pos.X)
+            {
+                throw new Exception("shouldnt be here, bad pos");
+            }
+
+            //rotate player by rot
+            player.Rotate(rot);
+            return true;
+        }
+
+        bool GetNextValidPointYPart2(ref Player player, Point next, Cube cubeMap, Dictionary<int, List<Tile>> tileMap, Point bounds, out Point nextValidPos)
+        {
+            int rot = 0;
+            Point remapped = cubeMap.GetRemappedPoint(player.pos, next, out rot);
+            var tileList = tileMap[remapped.Y];
+
+            if (tileList.Where(x => x.pos.X == remapped.X && x.type == Tile.Type.Wall).Any())
+            {
+                //movement blocked, cant move
+                nextValidPos = player.pos;
+                return false;
+            }
+
+            nextValidPos = remapped;
+
+            //sanity check we arent somewhere we shouldnt be...
+            tileList = tileMap[nextValidPos.Y];
+            if (tileList.Where(x => x.pos.X == remapped.X && x.type == Tile.Type.Wall).Any())
+            {
+                throw new Exception("shouldnt be here, bad pos");
+            }
+            //sanity check we arent somewhere we shouldnt be...
+            if (nextValidPos.X < tileList.First().pos.X || nextValidPos.X > tileList.Last().pos.X)
+            {
+                throw new Exception("shouldnt be here, bad pos");
+            }
+
+            //rotate player by rot
+            player.Rotate(rot);
+            return true;
+        }
+
+        struct FaceLinkData
+        {
+            public Face from;
+            public Face.EdgeDir fromEdge;
+
+            public Face to;
+            public Face.EdgeDir toEdge;
+
+            public int rotation;
+
+            public FaceLinkData(Face fid, Face.EdgeDir fedg, Face tid, Face.EdgeDir todg, int relativerRot)
+            {
+                fromEdge= fedg;
+                from = fid;
+                toEdge = todg;
+                to = tid;
+                rotation = relativerRot;
+            }
+
+            public LinkedEdge GetOtherConnectedEdge(int faceId)
+            {
+                LinkedEdge linked = new();
+
+                if (faceId == from.id)
+                {
+                    linked.face = to;
+                    linked.edge = toEdge;
+                    linked.rot = rotation;
+                }
+                else
+                {
+                    linked.face = from;
+                    linked.edge = fromEdge;
+                    linked.rot = 4 + ( -1 * rotation);
+                }
+
+                return linked;
+            }
+        }
+
+        struct LinkedEdge
+        {
+            public Face face;
+            public Face.EdgeDir edge;
+            public int rot;
+        }
+
+        struct Face
+        {
+            public enum EdgeDir
+            {
+                Up, Down, Left, Right, None
+            }
+
+            public int id;
+            public Point UL;
+            public Point LR;
+
+            //upper left, uppr right, bottom left, bottom right
+            public Face(int _id, Point ul, Point lr)
+            {
+                id = _id;
+                UL = ul;
+                LR = lr;
+            }
+
+            public EdgeDir GetEdgeForPoint(Point p)
+            {
+                if (p.X == UL.X)
+                    return EdgeDir.Left;
+                if (p.X == LR.X)
+                    return EdgeDir.Right;
+                if (p.Y == UL.Y)
+                    return EdgeDir.Up;
+                if (p.Y == LR.Y)
+                    return EdgeDir.Down;
+
+                return EdgeDir.None;
+            }
+
+            public EdgeDir GetCrossedEdgeFromNextPoint(Point p)
+            {
+                if (p.X == UL.X - 1)
+                    return EdgeDir.Left;
+                if (p.X == LR.X + 1)
+                    return EdgeDir.Right;
+                if (p.Y == UL.Y - 1)
+                    return EdgeDir.Up;
+                if (p.Y == LR.Y + 1)
+                    return EdgeDir.Down;
+
+                return EdgeDir.None;
+            }
+
+            public bool IsPointOnFace(Point p)
+            {
+                if(p.X >= UL.X && p.X <= LR.X)
+                {
+                    if (p.Y >= UL.Y && p.Y <= LR.Y)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        struct Cube
+        {
+            public Face[] faces;
+            Dictionary<(int faceId, Face.EdgeDir edge), FaceLinkData> edgeLinkage = new();
+
+            public Cube()
+            { }
+
+            public Point GetRemappedPoint(Point oldPos, Point nextPos, out int playerRotation)
+            {
+                Point p = nextPos;
+                playerRotation = 0;
+
+                //find out where we went out of bounds..old pos can get the face, new pos to get the edge
+                Face? oldFace = GetFaceForPoint(oldPos);
+                Face? nextFace = GetFaceForPoint(nextPos);
+
+                if(nextFace.HasValue == false || nextFace.Value.id != oldFace.Value.id)
+                {
+                    //went off the face, lets adjust the point. if theres no linked edge, we probably safely traveled from two connected ones on the grid already
+
+                    Face.EdgeDir edge = oldFace.Value.GetCrossedEdgeFromNextPoint(nextPos);
+                    LinkedEdge? linked = GetLinkedEdge(oldFace.Value, edge);
+                    if(linked.HasValue)
+                    {
+                        //we need to warp the point
+                        //TODO: figure out player rotation
+
+                        PointFloat edgeMidTooOldPos;
+                        if (edge == Face.EdgeDir.Up)
+                            edgeMidTooOldPos = new PointFloat(oldPos.X - (oldFace.Value.UL.X + 24.5f), 0);
+                        else if (edge == Face.EdgeDir.Down)
+                            edgeMidTooOldPos = new PointFloat(oldPos.X - (oldFace.Value.UL.X + 24.5f), 0);
+                        else if(edge == Face.EdgeDir.Left)
+                            edgeMidTooOldPos = new PointFloat(0, oldPos.Y - (oldFace.Value.UL.Y + 24.5f));
+                        else
+                            edgeMidTooOldPos = new PointFloat(0, oldPos.Y - (oldFace.Value.UL.Y + 24.5f));
+
+                       // edgeMidTooOldPos = oldPos - edgeMidTooOldPos;
+
+                        //now rotate...
+                        // (y, -x) = clockwise 90 degree
+                        int rotDir = linked.Value.rot;
+
+                        for(int i = 0; i < rotDir; ++i)
+                        {
+                            edgeMidTooOldPos = new PointFloat(edgeMidTooOldPos.Y, -1 * edgeMidTooOldPos.X);
+                        }
+
+                        //then get edge of arrived at face/edge
+                        //and get its midpoint
+                        PointFloat arrivedAtEdgeMidPoint;
+                        if (linked.Value.edge == Face.EdgeDir.Up)
+                            arrivedAtEdgeMidPoint = new PointFloat((linked.Value.face.UL.X + 24.5f) , linked.Value.face.UL.Y);
+                        else if (linked.Value.edge == Face.EdgeDir.Down)
+                            arrivedAtEdgeMidPoint = new PointFloat((linked.Value.face.UL.X + 24.5f), linked.Value.face.LR.Y);
+                        else if (linked.Value.edge == Face.EdgeDir.Left)
+                            arrivedAtEdgeMidPoint = new PointFloat(linked.Value.face.UL.X, (linked.Value.face.UL.Y + 24.5f));
+                        else
+                            arrivedAtEdgeMidPoint = new PointFloat(linked.Value.face.LR.X, (linked.Value.face.UL.Y + 24.5f));
+
+
+                        //adjsut the point...
+                        PointFloat adjusted = arrivedAtEdgeMidPoint + edgeMidTooOldPos;
+                        p = new Point((int)adjusted.X, (int)adjusted.Y);
+                        playerRotation = linked.Value.rot;
+                    }
+                }
+
+
+
+                return p;
+            }
+
+            public Face? GetFaceForPoint(Point pos)
+            {
+                foreach(Face face in faces)
+                {
+                    if (face.IsPointOnFace(pos))
+                        return face;
+                }
+
+                return null;
+            }
+
+            public LinkedEdge? GetLinkedEdge(Face face, Face.EdgeDir edge)
+            {
+                if(!edgeLinkage.ContainsKey((face.id, edge)))
+                {
+                    return null;
+                }
+                return edgeLinkage[(face.id, edge)].GetOtherConnectedEdge(face.id);
+            }
+
+            public void LinkEdges()
+            {
+                //only need to link faces that have warps...right? or maybe all, in case we have to manage change in directions
+                //for now, just warp edges..
+                AddLinkage(new FaceLinkData(faces[0], Face.EdgeDir.Up, faces[5], Face.EdgeDir.Down, 0));
+                AddLinkage(new FaceLinkData(faces[0], Face.EdgeDir.Right, faces[3], Face.EdgeDir.Right, 2));
+                AddLinkage(new FaceLinkData(faces[0], Face.EdgeDir.Down, faces[2], Face.EdgeDir.Right, 1));
+
+                AddLinkage(new FaceLinkData(faces[1], Face.EdgeDir.Up, faces[5], Face.EdgeDir.Left, 1));
+                AddLinkage(new FaceLinkData(faces[1], Face.EdgeDir.Left, faces[4], Face.EdgeDir.Left, 2));
+
+                AddLinkage(new FaceLinkData(faces[2], Face.EdgeDir.Left, faces[4], Face.EdgeDir.Up, 3));
+
+                AddLinkage(new FaceLinkData(faces[3], Face.EdgeDir.Down, faces[5], Face.EdgeDir.Right, 1));
+            }
+
+            void AddLinkage(FaceLinkData fink)
+            {
+                edgeLinkage.Add((fink.from.id, fink.fromEdge), fink);
+                edgeLinkage.Add((fink.to.id, fink.toEdge), fink);
+            }
+        }
+
         struct Command
         {
             public int moveAmount;
@@ -414,11 +784,9 @@ namespace ConsoleApp1.Solutions
         {
             public enum Type
             {
-                WalkableEdge,
                 Walkable,
                 Wall,
                 BreadCrumb,
-                WrapedPath
             }
 
             public Type type;

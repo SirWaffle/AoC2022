@@ -8,6 +8,43 @@ namespace ConsoleApp1
 {
     internal static class Utils
     {
+        public struct PointFloat
+        {
+            public float X = 0;
+            public float Y = 0;
+
+            public PointFloat(float _x, float _y)
+            {
+                X = _x;
+                Y = _y;
+            }
+
+            public static PointFloat operator +(PointFloat x, PointFloat y)
+            {
+                return new PointFloat(x.X + y.X, x.Y + y.Y);
+            }
+
+            public static PointFloat operator -(PointFloat x, PointFloat y)
+            {
+                return new PointFloat(x.X - y.X, x.Y - y.Y);
+            }
+
+            public static bool operator ==(PointFloat x, PointFloat y)
+            {
+                return x.X == y.X && x.Y == y.Y;
+            }
+
+            public static bool operator !=(PointFloat x, PointFloat y)
+            {
+                return !(x == y);
+            }
+
+            public override string ToString()
+            {
+                return "(" + X + "," + Y + ")";
+            }
+        }
+
         public struct Point64
         {
             public Int64 X = 0;
