@@ -1,9 +1,4 @@
-﻿using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Numerics;
-using System.Runtime.Serialization.Formatters;
-using static ConsoleApp1.Utils;
-using static System.Net.Mime.MediaTypeNames;
+﻿using static ConsoleApp1.Utils;
 
 namespace ConsoleApp1.Solutions
 {
