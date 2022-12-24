@@ -9,7 +9,7 @@ var puzz = new Day24();
 puzz.InputFile = inputFile;
 
 var sw = Stopwatch.StartNew();
-puzz.Part1();
+puzz.Part2();
 sw.Stop();
 Console.WriteLine("execution time: " + sw.ElapsedMilliseconds);
 

@@ -1,6 +1,7 @@
 ﻿using ConsoleApp1.Utilities;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq.Expressions;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -68,19 +69,50 @@ namespace ConsoleApp1.Solutions
                 }
             }
 
+            Point start = new Point(0, -1);
+            Point end = new Point(blizz.maxBounds.X - 1, blizz.maxBounds.Y);
+            int[] totalSteps = new int[3];
+
+            totalSteps[0] = DoSearch(blizz, 0, start, end);
+
+            if (part2)
+            {
+                totalSteps[1] = DoSearch(blizz, totalSteps[0], end, start);
+                totalSteps[2] = DoSearch(blizz, totalSteps[0] + totalSteps[1], start, end);
+            }
+
+
+
+            Console.WriteLine("\n----- Finished Waiting -------");
+
+            Console.WriteLine("full trip in: " + totalSteps.ToList().Sum());
+            //be surei dont accidentaly fat finger some keys and close the console after this thing finishes, ha
+            _ = Console.ReadLine();
+            _ = Console.ReadLine();
+            _ = Console.ReadLine();
+            _ = Console.ReadLine();
+        }
+
+
+        int DoSearch(Blizzards blizz, int startStep, Point startPos, Point endPos)
+        {            
             Sim sim = new(blizz);
             sim.maxBounds = blizz.maxBounds;
-            sim.start = new Point(0, -1);
-            sim.end = new Point(sim.maxBounds.X - 1, sim.maxBounds.Y);
+            sim.start = startPos;
+            sim.end = endPos;
             sim.player.pos = sim.start;
             sim.step = 0;
+            sim.blizzStepOffset = startStep;
 
-            sim.Visualize();
+            //sim.Visualize();
+
+            Console.WriteLine("Starting search from " + sim.start + " to " + sim.end + " starting at step " + sim.step);
 
             int depthLimit = 327; //328 was found as a best, wrong answer too high
 
-            ThreadSafeSimStats.instance = new( 16, part2);
-            ThreadSafeSimStats.instance.DoVisualization = false;
+            ThreadSafeSimStats.instance = new(16); //dont need threads. really. visualization works without them
+            ThreadSafeSimStats.instance.DoVisualization = false;// true;
+            ThreadSafeSimStats.instance.DoPathVisualization = false;// true;
             ThreadSafeSimStats.instance.bestSimSteps = depthLimit;
 
             /*
@@ -94,15 +126,15 @@ namespace ConsoleApp1.Solutions
             if (ThreadSafeSimStats.instance.DoVisualization)
             {
                 Console.Clear();
-                Console.WindowWidth = sim.maxBounds.X + 1;
+                Console.WindowWidth = Math.Max(sim.maxBounds.X + 1, 40);
             }
 
 
             LinkedList<Sim> search = new();
-            search.AddLast(sim);            
+            search.AddLast(sim);
 
             Stopwatch watch = new();
-            watch.Start();           
+            watch.Start();
 
             //well, lets search. 
             SearchTaskLIST(search, depthLimit);
@@ -110,32 +142,30 @@ namespace ConsoleApp1.Solutions
             //wait for tasks
             Console.WriteLine("\n----- waiting for tasks -------");
             for (; ; )
-            {    
-                Thread.Sleep(5000);
+            {;
                 UInt64 active = Sim.NumCreatedSims - ThreadSafeSimStats.instance.discardedBranches;
                 Console.WriteLine(ThreadSafeSimStats.instance.crunchingTasks.Count() + " tasks\ncurrent simId: "
                                                     + Sim.NumCreatedSims + " number discarded: " + ThreadSafeSimStats.instance.discardedBranches + " Active: " + active
                                                     + "\nper sec: " + ((float)Sim.NumCreatedSims / ((float)watch.ElapsedMilliseconds / 1000)));
                 Console.WriteLine("current best: " + ThreadSafeSimStats.instance.bestSimSteps);
                 ThreadSafeSimStats.instance.ClearFinishedWork();
-                if (Task.WaitAll(ThreadSafeSimStats.instance.crunchingTasks.ToArray(), 5000))
+                if (Task.WaitAll(ThreadSafeSimStats.instance.crunchingTasks.ToArray(), 500))
                 {
                     ThreadSafeSimStats.instance.ClearFinishedWork();
+                    Thread.Sleep(1000);
                     break;
                 }
             }
 
 
-
             Console.WriteLine("\n----- Finished Waiting -------");
 
-            Console.WriteLine("Made it to finish at shortest number of steps: " + ThreadSafeSimStats.instance.bestSimSteps);
-            //be surei dont accidentaly fat finger some keys and close the console after this thing finishes, ha
-            _ = Console.ReadLine();
-            _ = Console.ReadLine();
-            _ = Console.ReadLine();
-            _ = Console.ReadLine();
+            Console.WriteLine("Made it in number of steps: " + ThreadSafeSimStats.instance.bestSimSteps);
+
+            return ThreadSafeSimStats.instance.bestSimSteps;
         }
+
+
 
         int visCount = 0;
         object visLock = new();
@@ -153,12 +183,12 @@ namespace ConsoleApp1.Solutions
 
                 if (ThreadSafeSimStats.instance.DoVisualization)
                 {
-                    if(ThreadSafeSimStats.instance.DoPathVisualization)
+                    if (ThreadSafeSimStats.instance.DoPathVisualization)
                         curSim.playerPath.Add(curSim.player.pos);
 
                     ++visCount;
-                    if (visCount > 10000000)
-                    {                       
+                    if (visCount > 0)
+                    {
                         if (Monitor.TryEnter(visLock))
                         {
                             try
@@ -167,6 +197,7 @@ namespace ConsoleApp1.Solutions
                                 Console.CursorTop = 0;
                                 Console.CursorLeft = 0;
                                 curSim.Visualize();
+                                //thread.Sleep(2000);
                             }
                             finally
                             {
@@ -181,9 +212,11 @@ namespace ConsoleApp1.Solutions
                 //    continue;
 
                 //exit conditions - a blizzard has moved into us
-                bool standingInAnEmptySpace = curSim.blizz.IsSpaceFree(curSim.step, curSim.player.pos, ref chars);
-                if(!standingInAnEmptySpace)
+                bool standingInAnEmptySpace = curSim.blizz.IsSpaceFree(curSim.step + curSim.blizzStepOffset, curSim.player.pos, ref chars);
+                if (!standingInAnEmptySpace)
                 {
+                    if (ThreadSafeSimStats.instance.DoVisualization)
+                        Console.WriteLine("rejected: our space became a blizzard");
                     ThreadSafeSimStats.instance.discardedBranches++;
                     continue;
                 }
@@ -191,7 +224,7 @@ namespace ConsoleApp1.Solutions
                 //add a new search branch for each possible move from this point...
                 //up, down, left, right, wait
                 //looking at what will be empty *next* step
-                curSim.blizz.GetNearbyFreeSpaces(curSim.step + 1, ref curSim.player.pos, ref freeSpaces, ref chars);
+                curSim.blizz.GetNearbyFreeSpaces(curSim.step + 1 + curSim.blizzStepOffset, ref curSim.player.pos, ref freeSpaces, ref chars);
                 bool moved = false;
                 for (int dir = 0; dir < (int)Dir.MAX_DIR + 1; dir++)
                 {
@@ -199,15 +232,15 @@ namespace ConsoleApp1.Solutions
                     {
                         continue;
                     }
-                    else if(dir == (int)Dir.MAX_DIR)
+                    else if (dir == (int)Dir.MAX_DIR)
                     {
                         //wait action..
-                        bool isWaitValid = curSim.blizz.IsSpaceFree(curSim.step + 1, curSim.player.pos, ref chars);
+                        bool isWaitValid = curSim.blizz.IsSpaceFree(curSim.step + 1 + curSim.blizzStepOffset, curSim.player.pos, ref chars);
                         if (!isWaitValid)
                             continue;
 
-                        //if we are at the starting point longer than a single cycle of the X blizzards, we have wited too long there
-                        if (curSim.step + 1 > curSim.maxBounds.X && curSim.player.pos == curSim.start)
+                        //if we are at the starting point longer than a single cycle of the X blizzards, we have waited too long there
+                        if (curSim.step > curSim.maxBounds.X && curSim.player.pos == curSim.start)
                         {
                             ThreadSafeSimStats.instance.discardedBranches++;
                             continue;
@@ -234,6 +267,8 @@ namespace ConsoleApp1.Solutions
                     //newSim.score = SimSortScore(ref newSim);
                     distVec = newSim.end - newSim.player.pos;
                     int distToEnd = (newSim.end.X + newSim.end.Y) - (newSim.player.pos.X + newSim.player.pos.Y);
+                    distToEnd = Math.Abs(distToEnd);
+
                     if (distToEnd > (depthLimit - newSim.step)) //we cant make it there
                     {
                         ThreadSafeSimStats.instance.discardedBranches++;
@@ -259,7 +294,7 @@ namespace ConsoleApp1.Solutions
                     //the correct spot is one above the end pos
                     if (newSim.player.pos.X == newSim.end.X)
                     {
-                        if (newSim.player.pos.Y == newSim.end.Y - 1)
+                        if (newSim.player.pos.Y == newSim.end.Y - 1 || newSim.player.pos.Y == newSim.end.Y + 1)
                         {
                             //we arrived, or will in one more step.
                             //lets record this and exit this branch
@@ -274,7 +309,7 @@ namespace ConsoleApp1.Solutions
                     newSim.score = distToEnd;// + newSim.step;
 
                     //lets try to prune ineffective paths , and treat this thing as a 3d map
-                    if(ThreadSafeSimStats.instance.PrunePathBasedOnPruneMap(ref newSim, newSim.score))
+                    if (ThreadSafeSimStats.instance.PrunePathBasedOnPruneMap(ref newSim, newSim.score))
                     {
                         ThreadSafeSimStats.instance.discardedBranches++;
                         continue;
@@ -302,8 +337,10 @@ namespace ConsoleApp1.Solutions
                     }
                 }
 
-                if(!moved)
+                if (!moved)
+                {
                     ThreadSafeSimStats.instance.discardedBranches++;
+                }
             }
         }
 
@@ -379,12 +416,15 @@ namespace ConsoleApp1.Solutions
                 //TODO: hard code start / finish /
                 if (p.X == 0 && p.Y == -1)
                     return true;
-                
+
+                if (p.X == maxBounds.X - 1 && p.Y == maxBounds.Y)
+                    return true;
+
                 // hardcoded walls:
-                if (p.Y < 0 || p.Y == maxBounds.Y)
+                if (p.Y < 0 || p.Y >= maxBounds.Y)
                     return false;
 
-                if (p.X < 0 || p.X == maxBounds.X)
+                if (p.X < 0 || p.X >= maxBounds.X)
                     return false;
 
                 //see if stuff is free
@@ -442,6 +482,8 @@ namespace ConsoleApp1.Solutions
 
             public int score;
             public int step;
+
+            public int blizzStepOffset;
 
             //for visualizing, loose this once when not debugging
             public List<Point> playerPath = new(500);
@@ -551,16 +593,14 @@ namespace ConsoleApp1.Solutions
             SortedDictionary<(Point, int step), ScoreHolder?> maxScorePruneMap = new();
 
             public UInt64 discardedBranches = 0;
-            public bool Part2 = false;
 
             LimitedConcurrencyLevelTaskScheduler scheduler;
             CancellationToken cancelToken;
 
-            public ThreadSafeSimStats(int _taskLimit, bool part2)
+            public ThreadSafeSimStats(int _taskLimit)
             {
                 taskLimit = _taskLimit;
                 threadLimit = taskLimit;
-                Part2 = part2;
                 mainThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
                 scheduler = new LimitedConcurrencyLevelTaskScheduler(Math.Max(2, threadLimit));
             }
