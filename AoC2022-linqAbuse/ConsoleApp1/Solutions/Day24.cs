@@ -78,7 +78,7 @@ namespace ConsoleApp1.Solutions
             sim.Visualize();
 
             ThreadSafeSimStats.instance = new( 16, part2);
-            ThreadSafeSimStats.instance.DoVisualization = false;
+            ThreadSafeSimStats.instance.DoVisualization = true;
 
             /*
             //testing visualization
@@ -151,7 +151,7 @@ namespace ConsoleApp1.Solutions
             //hrm...
             //maybe there is some pattern to the blizzard movement...
             //return (dist.X + dist.Y) + sim.step;
-            int dfs =  -1 * sim.step; //plain old DFS
+            int dfs =  sim.step; //plain old DFS
 
             //lets add a distance component...
             return dfs - ((sim.end.X + sim.end.Y) - distInt);
@@ -179,7 +179,9 @@ namespace ConsoleApp1.Solutions
 
                 if (ThreadSafeSimStats.instance.DoVisualization)
                 {
-                    curSim.playerPath.Add(curSim.player.pos);
+                    if(ThreadSafeSimStats.instance.DoPathVisualization)
+                        curSim.playerPath.Add(curSim.player.pos);
+
                     ++visCount;
                     if (visCount > 10000000)
                     {                       
@@ -206,7 +208,7 @@ namespace ConsoleApp1.Solutions
 
                 //if we are next to the end, we have arrived...
                 //the correct spot is one above the end pos
-                if(curSim.player.pos.X == curSim.end.X)
+                if (curSim.player.pos.X == curSim.end.X)
                 {
                     if(curSim.player.pos.Y == curSim.end.Y - 1)
                     {
@@ -309,10 +311,16 @@ namespace ConsoleApp1.Solutions
                     //get a sort score
                     //PERF: removing function call
                     //newSim.score = SimSortScore(ref newSim);
-                    Point dist = newSim.end - newSim.player.pos;
-                    int distInt = (dist.X + dist.Y);
+                    Point distVec = newSim.end - newSim.player.pos;
+                    int distToEnd = (distVec.X + distVec.Y);
+                    if (distToEnd > ThreadSafeSimStats.instance.bestSimSteps - newSim.step)
+                    {
+                        ThreadSafeSimStats.instance.discardedBranches++;
+                        continue;
+                    }
+
                     int dfs = -1 * newSim.step; //plain old DFS
-                    newSim.score = dfs - ((newSim.end.X + newSim.end.Y) - distInt);
+                    newSim.score = dfs - ((newSim.end.X + newSim.end.Y) - distToEnd);
 
                     //step
                     newSim.step++;
@@ -568,6 +576,7 @@ namespace ConsoleApp1.Solutions
             public static ThreadSafeSimStats instance;
 
             public bool DoVisualization = false;
+            public bool DoPathVisualization = false;
 
             public List<Task> crunchingTasks = new();
             public int taskLimit = 10;
