@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Net.Http.Headers;
 
-string inputFile = @"InputFiles/Input24_1_ex2.txt";
+string inputFile = @"InputFiles/Input24_1.txt";
 
 //for doing a specific puzzle:
 var puzz = new Day24();

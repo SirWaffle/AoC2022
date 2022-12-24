@@ -76,7 +76,8 @@ namespace ConsoleApp1.Solutions
 
             sim.Visualize();
 
-            ThreadSafeSimStats.instance = new(10, part2);
+            ThreadSafeSimStats.instance = new(16, part2);
+            ThreadSafeSimStats.instance.DoVisualization = false;
 
             /*
             //testing visualization
@@ -86,13 +87,19 @@ namespace ConsoleApp1.Solutions
                 sim.Visualize();
             }*/
 
+            if (ThreadSafeSimStats.instance.DoVisualization)
+            {
+                Console.Clear();
+                Console.WindowWidth = sim.maxBounds.X + 1;
+            }
+
 
             LinkedList<Sim> search = new();
             search.AddLast(sim);
-            int depthLimit = 100;
+            int depthLimit = 690;
 
             Stopwatch watch = new();
-            watch.Start();
+            watch.Start();           
 
             //well, lets search. 
             SearchTaskLIST(search, depthLimit);
@@ -100,9 +107,10 @@ namespace ConsoleApp1.Solutions
             //wait for tasks
             Console.WriteLine("\n----- waiting for tasks -------");
             for (; ; )
-            {
+            {    
                 Thread.Sleep(5000);
-                Console.WriteLine((watch.ElapsedMilliseconds) + " ms :Crunching  with: " + ThreadSafeSimStats.instance.crunchingTasks.Count() + " tasks, current simId: " + Sim.NumCreatedSims + " number discarded: " + ThreadSafeSimStats.instance.discardedBranches);
+                Console.WriteLine((watch.ElapsedMilliseconds) + " ms :Crunching  with: " + ThreadSafeSimStats.instance.crunchingTasks.Count() + " tasks, current simId: " 
+                                    + Sim.NumCreatedSims + " number discarded: " + ThreadSafeSimStats.instance.discardedBranches + " current best: " + ThreadSafeSimStats.instance.bestSimSteps);
                 ThreadSafeSimStats.instance.ClearFinishedWork();
                 if (Task.WaitAll(ThreadSafeSimStats.instance.crunchingTasks.ToArray(), 5000))
                 {
@@ -129,7 +137,20 @@ namespace ConsoleApp1.Solutions
         static int SimSortScore(ref Sim sim)
         {
             Point dist = sim.end - sim.player.pos;
-            return ( 10000 * (dist.X + dist.Y)) + sim.step;
+            int distInt = (dist.X + dist.Y);
+            //return ( 10000 * (dist.X + dist.Y)) + sim.step;
+            //more a* ish. im more concerned about finding *a* path than finding the best...
+            //finding *one path* will cull a ton of stuff
+            //maybe there is some trick to calculating the distance...the rotating blizzards make that tricky where 
+            //this super lazy manhattan distance is not really doing us any good
+            //like..maybe we have to wait twice before moving anywhere to the end...that wouldnt be evaluated until WAY later...
+            //hrm...
+            //maybe there is some pattern to the blizzard movement...
+            //return (dist.X + dist.Y) + sim.step;
+            int dfs =  -1 * sim.step; //plain old DFS
+
+            //lets add a distance component...
+            return dfs - ((sim.end.X + sim.end.Y) - distInt);     
         }
 
 
@@ -138,15 +159,42 @@ namespace ConsoleApp1.Solutions
                                             new Point(3, 1),new Point(3, 1),new Point(3, 2),new Point(3, 3), new Point(4, 3),
                                             new Point(5, 3),new Point(6, 3),new Point(6, 4),new Point(6, 7),};
 
+        int visCount = 0;
+        object visLock = new();
+
         void SearchTaskLIST(LinkedList<Sim> search, int depthLimit)
         {
             while (search.Count > 0)
             {
                 Sim curSim = search.First.Value;
-                search.RemoveFirst();                
+                search.RemoveFirst();
 
-                if (curSim.step > depthLimit)
-                    continue;
+                if (ThreadSafeSimStats.instance.DoVisualization)
+                {
+                    curSim.playerPath.Add(curSim.player.pos);
+                    ++visCount;
+                    if (visCount > 10000000)
+                    {                       
+                        if (Monitor.TryEnter(visLock))
+                        {
+                            try
+                            {
+                                visCount = 0;
+                                Console.CursorTop = 0;
+                                Console.CursorLeft = 0;
+                                curSim.Visualize();
+                            }
+                            finally
+                            {
+                                visCount /= 2;
+                                Monitor.Exit(visLock);
+                            }
+                        }
+                    }
+                }
+
+                //if (curSim.step > depthLimit)
+                //    continue;
 
                 //if we are next to the end, we have arrived...
                 //the correct spot is one above the end pos
@@ -161,6 +209,13 @@ namespace ConsoleApp1.Solutions
                         ThreadSafeSimStats.instance.discardedBranches++;
                         continue;
                     }
+                }
+
+                //if we are at the starting point longer than a single cycle of the X blizzards, we have wited too long there
+                if(curSim.step > curSim.maxBounds.X && curSim.player.pos == curSim.start)
+                {
+                    ThreadSafeSimStats.instance.discardedBranches++;
+                    continue;
                 }
 
                 //check against ex2
@@ -201,7 +256,7 @@ namespace ConsoleApp1.Solutions
                 //up, down, left, right, wait
                 //looking at what will be empty *next* step
                 bool[] freeSpaces = curSim.blizz.GetNearbyFreeSpaces(curSim.step + 1, ref curSim.player.pos);
-
+                bool moved = false;
                 for (int dir = 0; dir < (int)Dir.MAX_DIR + 1; dir++)
                 {
                     if (dir != (int)Dir.MAX_DIR && freeSpaces[dir] == false)
@@ -215,7 +270,7 @@ namespace ConsoleApp1.Solutions
                         if (!isWaitValid)
                             continue;
                     }
-
+                    moved = true;
                     //add a new sim 
                     Sim newSim = curSim.DeepCopy();
 
@@ -253,6 +308,9 @@ namespace ConsoleApp1.Solutions
                             search.AddLast(newSim);
                     }
                 }
+
+                if(!moved)
+                    ThreadSafeSimStats.instance.discardedBranches++;
             }
         }
 
@@ -397,6 +455,9 @@ namespace ConsoleApp1.Solutions
             public int score;
             public int step;
 
+            //for visualizing, loose this once when not debugging
+            public List<Point> playerPath = new(500);
+
             public Sim(Blizzards blz)
             {
                 blizz = blz;
@@ -405,6 +466,14 @@ namespace ConsoleApp1.Solutions
             public Sim DeepCopy()
             {
                 Sim newSim = this;
+
+                //TODO: get rid of this when not debugging
+                if (playerPath.Count != 0)
+                {
+                    newSim.playerPath = new(500);
+                    newSim.playerPath.AddRange(playerPath);
+                }
+
                 NumCreatedSims++;
                 return newSim;
             }
@@ -415,9 +484,16 @@ namespace ConsoleApp1.Solutions
                 {
                     for (int x = 0; x < maxBounds.X; x++)
                     {
-                        if(player.pos == new Point(x, y))
+                        if (player.pos == new Point(x, y))
                         {
+                            Console.ForegroundColor = ConsoleColor.Cyan;
                             Console.Write("E");
+                            continue;
+                        }
+                        if (playerPath.Contains(new Point(x, y)))
+                        {
+                            Console.ForegroundColor = ConsoleColor.DarkCyan;
+                            Console.Write("e");
                             continue;
                         }
                         char[] chars = blizz.GetCharsAtStep(step, new Point(x, y));
@@ -433,17 +509,27 @@ namespace ConsoleApp1.Solutions
                         }
 
                         if (nonEmpty == 0)
-                            Console.Write('.');
+                        {
+                            Console.ForegroundColor = ConsoleColor.DarkGreen;
+                            Console.Write(".");
+                        }
                         else if (nonEmpty == 1)
+                        {
+                            Console.ForegroundColor = ConsoleColor.DarkRed;
                             Console.Write(lastNonEmpty);
+                        }
                         else
-                            Console.Write(nonEmpty.ToString());
+                        {
+                            Console.ForegroundColor = ConsoleColor.DarkRed;
+                            Console.Write(nonEmpty);
+                        }
 
 
                     }
                     Console.WriteLine();
                 }
 
+                Console.ForegroundColor= ConsoleColor.White;
                 Console.WriteLine("Step: " + step + "\n\n");
             }
         }
@@ -455,6 +541,7 @@ namespace ConsoleApp1.Solutions
         {
             public static ThreadSafeSimStats instance;
 
+            public bool DoVisualization = false;
 
             public List<Task> crunchingTasks = new();
             public int taskLimit = 10;
@@ -478,7 +565,7 @@ namespace ConsoleApp1.Solutions
                 threadLimit = taskLimit;
                 Part2 = part2;
                 mainThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
-                scheduler = new LimitedConcurrencyLevelTaskScheduler(threadLimit);
+                scheduler = new LimitedConcurrencyLevelTaskScheduler(Math.Max(2, threadLimit));
             }
 
             public bool CheckMax(ref Sim curSim, bool updateScore)
@@ -506,6 +593,9 @@ namespace ConsoleApp1.Solutions
 
             public bool CanAddWork()
             {
+                if (taskLimit == 0)
+                    return false;
+
                 if (Thread.CurrentThread.ManagedThreadId == mainThreadId)
                     return true;
 
