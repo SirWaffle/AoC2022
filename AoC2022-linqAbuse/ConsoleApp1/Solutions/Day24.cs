@@ -77,8 +77,11 @@ namespace ConsoleApp1.Solutions
 
             sim.Visualize();
 
+            int depthLimit = 327; //328 was found as a best, wrong answer too high
+
             ThreadSafeSimStats.instance = new( 16, part2);
-            ThreadSafeSimStats.instance.DoVisualization = true;
+            ThreadSafeSimStats.instance.DoVisualization = false;
+            ThreadSafeSimStats.instance.bestSimSteps = depthLimit;
 
             /*
             //testing visualization
@@ -96,8 +99,7 @@ namespace ConsoleApp1.Solutions
 
 
             LinkedList<Sim> search = new();
-            search.AddLast(sim);
-            int depthLimit = 689;
+            search.AddLast(sim);            
 
             Stopwatch watch = new();
             watch.Start();           
@@ -110,11 +112,11 @@ namespace ConsoleApp1.Solutions
             for (; ; )
             {    
                 Thread.Sleep(5000);
-                UInt64 active = Sim.NumCreatedSims + ThreadSafeSimStats.instance.discardedBranches;
-                Console.WriteLine((watch.ElapsedMilliseconds) + " ms :Crunching  with: " + ThreadSafeSimStats.instance.crunchingTasks.Count() + " tasks, current simId: " 
-                                    + Sim.NumCreatedSims + " number discarded: " + ThreadSafeSimStats.instance.discardedBranches + " Active: " + active 
-                                    + " per sec: " + ((float)Sim.NumCreatedSims / ((float)watch.ElapsedMilliseconds / 1000))
-                                    + " current best: " + ThreadSafeSimStats.instance.bestSimSteps);
+                UInt64 active = Sim.NumCreatedSims - ThreadSafeSimStats.instance.discardedBranches;
+                Console.WriteLine(ThreadSafeSimStats.instance.crunchingTasks.Count() + " tasks\ncurrent simId: "
+                                                    + Sim.NumCreatedSims + " number discarded: " + ThreadSafeSimStats.instance.discardedBranches + " Active: " + active
+                                                    + "\nper sec: " + ((float)Sim.NumCreatedSims / ((float)watch.ElapsedMilliseconds / 1000)));
+                Console.WriteLine("current best: " + ThreadSafeSimStats.instance.bestSimSteps);
                 ThreadSafeSimStats.instance.ClearFinishedWork();
                 if (Task.WaitAll(ThreadSafeSimStats.instance.crunchingTasks.ToArray(), 5000))
                 {
@@ -135,43 +137,15 @@ namespace ConsoleApp1.Solutions
             _ = Console.ReadLine();
         }
 
-
-        //score this sim for insertion order...
-        //low score is better
-        static int SimSortScore(ref Sim sim)
-        {
-            Point dist = sim.end - sim.player.pos;
-            int distInt = (dist.X + dist.Y);
-            //return ( 10000 * (dist.X + dist.Y)) + sim.step;
-            //more a* ish. im more concerned about finding *a* path than finding the best...
-            //finding *one path* will cull a ton of stuff
-            //maybe there is some trick to calculating the distance...the rotating blizzards make that tricky where 
-            //this super lazy manhattan distance is not really doing us any good
-            //like..maybe we have to wait twice before moving anywhere to the end...that wouldnt be evaluated until WAY later...
-            //hrm...
-            //maybe there is some pattern to the blizzard movement...
-            //return (dist.X + dist.Y) + sim.step;
-            int dfs =  sim.step; //plain old DFS
-
-            //lets add a distance component...
-            return dfs - ((sim.end.X + sim.end.Y) - distInt);
-            //return ((sim.end.X + sim.end.Y) - distInt) - dfs;
-        }
-
-
-        List<Point> ex2_positions_by_step = new() { new Point(1,1), new Point(1,2), new Point(1,2), new Point(1,1),
-                                            new Point(2, 1),new Point(3, 1),new Point(3, 2),new Point(2, 2), new Point(2, 1),
-                                            new Point(3, 1),new Point(3, 1),new Point(3, 2),new Point(3, 3), new Point(4, 3),
-                                            new Point(5, 3),new Point(6, 3),new Point(6, 4),new Point(6, 7),};
-
         int visCount = 0;
         object visLock = new();
 
-        bool[] freeSpaces = new bool [4];
-        char[] chars = new char[4];
-
         void SearchTaskLIST(LinkedList<Sim> search, int depthLimit)
         {
+            bool[] freeSpaces = new bool[4];
+            char[] chars = new char[4];
+            Point distVec = new();
+
             while (search.Count > 0)
             {
                 Sim curSim = search.First.Value;
@@ -203,60 +177,12 @@ namespace ConsoleApp1.Solutions
                     }
                 }
 
-                if (curSim.step > depthLimit)
-                    continue;
-
-                //if we are next to the end, we have arrived...
-                //the correct spot is one above the end pos
-                if (curSim.player.pos.X == curSim.end.X)
-                {
-                    if(curSim.player.pos.Y == curSim.end.Y - 1)
-                    {
-                        //we arrived, or will in one more step.
-                        //lets record this and exit this branch
-                        curSim.step++;
-                        ThreadSafeSimStats.instance.CheckMax(ref curSim, true);
-                        ThreadSafeSimStats.instance.discardedBranches++;
-                        continue;
-                    }
-                }
-
-                //if we are at the starting point longer than a single cycle of the X blizzards, we have wited too long there
-                if(curSim.step > curSim.maxBounds.X && curSim.player.pos == curSim.start)
-                {
-                    ThreadSafeSimStats.instance.discardedBranches++;
-                    continue;
-                }
-
-                //check against ex2
-                /*
-                if (curSim.step >= ex2_positions_by_step.Count)
-                    continue; //this branch is obv. not gonna work
-
-                if (curSim.step > 0)
-                {
-                    Point ex2best = ex2_positions_by_step[curSim.step - 1];
-                    ex2best.X--;
-                    ex2best.Y--;
-                    if (curSim.player.pos == ex2best)
-                    {
-                        curSim.Visualize();
-                        int x = 0;
-                        x++;
-                    }
-                }*/
+                //if (curSim.step > depthLimit)
+                //    continue;
 
                 //exit conditions - a blizzard has moved into us
                 bool standingInAnEmptySpace = curSim.blizz.IsSpaceFree(curSim.step, curSim.player.pos, ref chars);
                 if(!standingInAnEmptySpace)
-                {
-                    ThreadSafeSimStats.instance.discardedBranches++;
-                    continue;
-                }
-
-                //lets try to early out here based on best score for a completion so far...
-                bool lessThanBest = ThreadSafeSimStats.instance.CheckMax(ref curSim, false);
-                if(!lessThanBest)
                 {
                     ThreadSafeSimStats.instance.discardedBranches++;
                     continue;
@@ -279,51 +205,80 @@ namespace ConsoleApp1.Solutions
                         bool isWaitValid = curSim.blizz.IsSpaceFree(curSim.step + 1, curSim.player.pos, ref chars);
                         if (!isWaitValid)
                             continue;
+
+                        //if we are at the starting point longer than a single cycle of the X blizzards, we have wited too long there
+                        if (curSim.step + 1 > curSim.maxBounds.X && curSim.player.pos == curSim.start)
+                        {
+                            ThreadSafeSimStats.instance.discardedBranches++;
+                            continue;
+                        }
                     }
+
                     moved = true;
                     //add a new sim 
                     Sim newSim = curSim.DeepCopy();
 
                     //make move ( or wait)
-                    if(dir != (int)Dir.MAX_DIR)
+                    if (dir != (int)Dir.MAX_DIR)
                     {
                         //make move...
-                        //PERF: removing function call
-                        //newSim.player.pos = GetAdjustPointByDir(ref newSim.player.pos, (Dir)dir);
-
-                        switch ((Dir)dir)
-                        {
-                            case Dir.Up:
-                                newSim.player.pos.Y--;
-                                break;
-                            case Dir.Right:
-                                newSim.player.pos.X++;
-                                break;
-                            case Dir.Down:
-                                newSim.player.pos.Y++;
-                                break;
-                            case Dir.Left:
-                                newSim.player.pos.X--;
-                                break;
-                        }
+                        newSim.player.pos = GetAdjustPointByDir(ref newSim.player.pos, (Dir)dir);
                     }
+
+                    //step
+                    newSim.step++;
+
 
                     //get a sort score
                     //PERF: removing function call
                     //newSim.score = SimSortScore(ref newSim);
-                    Point distVec = newSim.end - newSim.player.pos;
-                    int distToEnd = (distVec.X + distVec.Y);
-                    if (distToEnd > ThreadSafeSimStats.instance.bestSimSteps - newSim.step)
+                    distVec = newSim.end - newSim.player.pos;
+                    int distToEnd = (newSim.end.X + newSim.end.Y) - (newSim.player.pos.X + newSim.player.pos.Y);
+                    if (distToEnd > (depthLimit - newSim.step)) //we cant make it there
                     {
                         ThreadSafeSimStats.instance.discardedBranches++;
                         continue;
                     }
 
-                    int dfs = -1 * newSim.step; //plain old DFS
-                    newSim.score = dfs - ((newSim.end.X + newSim.end.Y) - distToEnd);
+                    if (distToEnd > ThreadSafeSimStats.instance.bestSimSteps - newSim.step)
+                    {
+                        //we cant make it there as well as the last
+                        ThreadSafeSimStats.instance.discardedBranches++;
+                        continue;
+                    }
 
-                    //step
-                    newSim.step++;
+                    //lets try to early out here based on best score for a completion so far...
+                    bool lessThanBest = ThreadSafeSimStats.instance.CheckBestPath(ref newSim, false);
+                    if (!lessThanBest)
+                    {
+                        ThreadSafeSimStats.instance.discardedBranches++;
+                        continue;
+                    }
+
+                    //if we are next to the end, we have arrived...
+                    //the correct spot is one above the end pos
+                    if (newSim.player.pos.X == newSim.end.X)
+                    {
+                        if (newSim.player.pos.Y == newSim.end.Y - 1)
+                        {
+                            //we arrived, or will in one more step.
+                            //lets record this and exit this branch
+                            newSim.step++;
+                            ThreadSafeSimStats.instance.CheckBestPath(ref newSim, true);
+                            ThreadSafeSimStats.instance.discardedBranches++;
+                            continue;
+                        }
+                    }
+
+                    //int dfs = -1 * newSim.step; //plain old DFS
+                    newSim.score = distToEnd;// + newSim.step;
+
+                    //lets try to prune ineffective paths , and treat this thing as a 3d map
+                    if(ThreadSafeSimStats.instance.PrunePathBasedOnPruneMap(ref newSim, newSim.score))
+                    {
+                        ThreadSafeSimStats.instance.discardedBranches++;
+                        continue;
+                    }
 
                     if (ThreadSafeSimStats.instance.CanAddWork())
                     {
@@ -588,6 +543,13 @@ namespace ConsoleApp1.Solutions
             public int bestSimSteps = 9999999;
             object maxLockObj = new();
 
+            public object pruneMaxLockObj = new();
+            class ScoreHolder
+            {
+                public int score;
+            }
+            SortedDictionary<(Point, int step), ScoreHolder?> maxScorePruneMap = new();
+
             public UInt64 discardedBranches = 0;
             public bool Part2 = false;
 
@@ -603,7 +565,26 @@ namespace ConsoleApp1.Solutions
                 scheduler = new LimitedConcurrencyLevelTaskScheduler(Math.Max(2, threadLimit));
             }
 
-            public bool CheckMax(ref Sim curSim, bool updateScore)
+            public bool PrunePathBasedOnPruneMap(ref Sim curSim, int simScore)
+            {
+                lock(pruneMaxLockObj)
+                {
+                    if(maxScorePruneMap.TryGetValue((curSim.player.pos, curSim.step), out ScoreHolder? score))
+                    {
+                        if (simScore <= score.score)
+                            return true;
+                        score.score = simScore;
+                    }
+                    else
+                    {
+                        maxScorePruneMap.Add((curSim.player.pos, curSim.step), new ScoreHolder() { score = simScore });
+                    }
+                }
+
+                return false;
+            }
+
+            public bool CheckBestPath(ref Sim curSim, bool updateScore)
             {
                 //hack to quickly exit out if its not even close..no need to lock anything
                 if (curSim.step >= bestSimSteps)
