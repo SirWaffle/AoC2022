@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters;
 using static ConsoleApp1.Utils;
 using static System.Net.Mime.MediaTypeNames;
@@ -76,8 +77,8 @@ namespace ConsoleApp1.Solutions
 
             sim.Visualize();
 
-            ThreadSafeSimStats.instance = new(16, part2);
-            ThreadSafeSimStats.instance.DoVisualization = true;
+            ThreadSafeSimStats.instance = new( 16, part2);
+            ThreadSafeSimStats.instance.DoVisualization = false;
 
             /*
             //testing visualization
@@ -111,7 +112,9 @@ namespace ConsoleApp1.Solutions
                 Thread.Sleep(5000);
                 UInt64 active = Sim.NumCreatedSims + ThreadSafeSimStats.instance.discardedBranches;
                 Console.WriteLine((watch.ElapsedMilliseconds) + " ms :Crunching  with: " + ThreadSafeSimStats.instance.crunchingTasks.Count() + " tasks, current simId: " 
-                                    + Sim.NumCreatedSims + " number discarded: " + ThreadSafeSimStats.instance.discardedBranches + " Active: " + active + " current best: " + ThreadSafeSimStats.instance.bestSimSteps);
+                                    + Sim.NumCreatedSims + " number discarded: " + ThreadSafeSimStats.instance.discardedBranches + " Active: " + active 
+                                    + " per sec: " + ((float)Sim.NumCreatedSims / ((float)watch.ElapsedMilliseconds / 1000))
+                                    + " current best: " + ThreadSafeSimStats.instance.bestSimSteps);
                 ThreadSafeSimStats.instance.ClearFinishedWork();
                 if (Task.WaitAll(ThreadSafeSimStats.instance.crunchingTasks.ToArray(), 5000))
                 {
@@ -151,8 +154,8 @@ namespace ConsoleApp1.Solutions
             int dfs =  -1 * sim.step; //plain old DFS
 
             //lets add a distance component...
-            //return dfs - ((sim.end.X + sim.end.Y) - distInt);
-            return ((sim.end.X + sim.end.Y) - distInt) - dfs;
+            return dfs - ((sim.end.X + sim.end.Y) - distInt);
+            //return ((sim.end.X + sim.end.Y) - distInt) - dfs;
         }
 
 
@@ -163,6 +166,9 @@ namespace ConsoleApp1.Solutions
 
         int visCount = 0;
         object visLock = new();
+
+        bool[] freeSpaces = new bool [4];
+        char[] chars = new char[4];
 
         void SearchTaskLIST(LinkedList<Sim> search, int depthLimit)
         {
@@ -239,7 +245,7 @@ namespace ConsoleApp1.Solutions
                 }*/
 
                 //exit conditions - a blizzard has moved into us
-                bool standingInAnEmptySpace = curSim.blizz.IsSpaceFree(curSim.step, curSim.player.pos);
+                bool standingInAnEmptySpace = curSim.blizz.IsSpaceFree(curSim.step, curSim.player.pos, ref chars);
                 if(!standingInAnEmptySpace)
                 {
                     ThreadSafeSimStats.instance.discardedBranches++;
@@ -257,7 +263,7 @@ namespace ConsoleApp1.Solutions
                 //add a new search branch for each possible move from this point...
                 //up, down, left, right, wait
                 //looking at what will be empty *next* step
-                bool[] freeSpaces = curSim.blizz.GetNearbyFreeSpaces(curSim.step + 1, ref curSim.player.pos);
+                curSim.blizz.GetNearbyFreeSpaces(curSim.step + 1, ref curSim.player.pos, ref freeSpaces, ref chars);
                 bool moved = false;
                 for (int dir = 0; dir < (int)Dir.MAX_DIR + 1; dir++)
                 {
@@ -268,7 +274,7 @@ namespace ConsoleApp1.Solutions
                     else if(dir == (int)Dir.MAX_DIR)
                     {
                         //wait action..
-                        bool isWaitValid = curSim.blizz.IsSpaceFree(curSim.step + 1, curSim.player.pos);
+                        bool isWaitValid = curSim.blizz.IsSpaceFree(curSim.step + 1, curSim.player.pos, ref chars);
                         if (!isWaitValid)
                             continue;
                     }
@@ -280,11 +286,33 @@ namespace ConsoleApp1.Solutions
                     if(dir != (int)Dir.MAX_DIR)
                     {
                         //make move...
-                        newSim.player.pos = GetAdjustPointByDir(ref newSim.player.pos, (Dir)dir);
+                        //PERF: removing function call
+                        //newSim.player.pos = GetAdjustPointByDir(ref newSim.player.pos, (Dir)dir);
+
+                        switch ((Dir)dir)
+                        {
+                            case Dir.Up:
+                                newSim.player.pos.Y--;
+                                break;
+                            case Dir.Right:
+                                newSim.player.pos.X++;
+                                break;
+                            case Dir.Down:
+                                newSim.player.pos.Y++;
+                                break;
+                            case Dir.Left:
+                                newSim.player.pos.X--;
+                                break;
+                        }
                     }
 
                     //get a sort score
-                    newSim.score = SimSortScore(ref newSim);
+                    //PERF: removing function call
+                    //newSim.score = SimSortScore(ref newSim);
+                    Point dist = newSim.end - newSim.player.pos;
+                    int distInt = (dist.X + dist.Y);
+                    int dfs = -1 * newSim.step; //plain old DFS
+                    newSim.score = dfs - ((newSim.end.X + newSim.end.Y) - distInt);
 
                     //step
                     newSim.step++;
@@ -371,22 +399,19 @@ namespace ConsoleApp1.Solutions
                 maxBounds = new Point(xSize, ySize);
             }
 
-            public bool[] GetNearbyFreeSpaces(int timeStep, ref Point p)
+            public void GetNearbyFreeSpaces(int timeStep, ref Point p, ref bool[] spaces, ref char[] chars)
             {
-                bool[] spaces = new bool[4];
                 //up
-                spaces[(int)Dir.Up] = IsSpaceFree(timeStep, GetAdjustPointByDir(ref p, Dir.Up));
+                spaces[(int)Dir.Up] = IsSpaceFree(timeStep, GetAdjustPointByDir(ref p, Dir.Up), ref chars);
                 //right
-                spaces[(int)Dir.Right] = IsSpaceFree(timeStep, GetAdjustPointByDir(ref p, Dir.Right));
+                spaces[(int)Dir.Right] = IsSpaceFree(timeStep, GetAdjustPointByDir(ref p, Dir.Right), ref chars);
                 //down
-                spaces[(int)Dir.Down] = IsSpaceFree(timeStep, GetAdjustPointByDir(ref p, Dir.Down));
+                spaces[(int)Dir.Down] = IsSpaceFree(timeStep, GetAdjustPointByDir(ref p, Dir.Down), ref chars);
                 //left
-                spaces[(int)Dir.Left] = IsSpaceFree(timeStep, GetAdjustPointByDir(ref p, Dir.Left));
-
-                return spaces;
+                spaces[(int)Dir.Left] = IsSpaceFree(timeStep, GetAdjustPointByDir(ref p, Dir.Left), ref chars);
             }
 
-            public bool IsSpaceFree(int timeStep, Point p)
+            public bool IsSpaceFree(int timeStep, Point p, ref char[] chars)
             {
                 //TODO: hard code start / finish /
                 if (p.X == 0 && p.Y == -1)
@@ -400,7 +425,7 @@ namespace ConsoleApp1.Solutions
                     return false;
 
                 //see if stuff is free
-                char[] chars = GetCharsAtStep(timeStep, p);
+                GetCharsAtStep(timeStep, p, ref chars);
                 for(int i =0; i < chars.Length;++i)
                 {
                     if (chars[i] != '.')
@@ -410,10 +435,8 @@ namespace ConsoleApp1.Solutions
                 return true;
             }
 
-            public char[] GetCharsAtStep(int timeStep, Point p)
+            public char[] GetCharsAtStep(int timeStep, Point p, ref char[] chars)
             {
-                char[] chars = new char[4];
-
                 //right and down
                 int modStepX = (p.X - timeStep);
                 int modStepY = (p.Y - timeStep);
@@ -482,7 +505,8 @@ namespace ConsoleApp1.Solutions
 
             public void Visualize()
             {
-                for(int y = 0; y < maxBounds.Y; y++)
+                char[] chars = new char[4];
+                for (int y = 0; y < maxBounds.Y; y++)
                 {
                     for (int x = 0; x < maxBounds.X; x++)
                     {
@@ -498,7 +522,7 @@ namespace ConsoleApp1.Solutions
                             Console.Write("e");
                             continue;
                         }
-                        char[] chars = blizz.GetCharsAtStep(step, new Point(x, y));
+                        blizz.GetCharsAtStep(step, new Point(x, y), ref chars);
                         int nonEmpty = 0;
                         char lastNonEmpty = 'X';
                         for (int i = 0; i < chars.Length; ++i)
