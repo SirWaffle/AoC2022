@@ -77,7 +77,7 @@ namespace ConsoleApp1.Solutions
             sim.Visualize();
 
             ThreadSafeSimStats.instance = new(16, part2);
-            ThreadSafeSimStats.instance.DoVisualization = false;
+            ThreadSafeSimStats.instance.DoVisualization = true;
 
             /*
             //testing visualization
@@ -96,7 +96,7 @@ namespace ConsoleApp1.Solutions
 
             LinkedList<Sim> search = new();
             search.AddLast(sim);
-            int depthLimit = 690;
+            int depthLimit = 689;
 
             Stopwatch watch = new();
             watch.Start();           
@@ -109,8 +109,9 @@ namespace ConsoleApp1.Solutions
             for (; ; )
             {    
                 Thread.Sleep(5000);
+                UInt64 active = Sim.NumCreatedSims + ThreadSafeSimStats.instance.discardedBranches;
                 Console.WriteLine((watch.ElapsedMilliseconds) + " ms :Crunching  with: " + ThreadSafeSimStats.instance.crunchingTasks.Count() + " tasks, current simId: " 
-                                    + Sim.NumCreatedSims + " number discarded: " + ThreadSafeSimStats.instance.discardedBranches + " current best: " + ThreadSafeSimStats.instance.bestSimSteps);
+                                    + Sim.NumCreatedSims + " number discarded: " + ThreadSafeSimStats.instance.discardedBranches + " Active: " + active + " current best: " + ThreadSafeSimStats.instance.bestSimSteps);
                 ThreadSafeSimStats.instance.ClearFinishedWork();
                 if (Task.WaitAll(ThreadSafeSimStats.instance.crunchingTasks.ToArray(), 5000))
                 {
@@ -150,7 +151,8 @@ namespace ConsoleApp1.Solutions
             int dfs =  -1 * sim.step; //plain old DFS
 
             //lets add a distance component...
-            return dfs - ((sim.end.X + sim.end.Y) - distInt);     
+            //return dfs - ((sim.end.X + sim.end.Y) - distInt);
+            return ((sim.end.X + sim.end.Y) - distInt) - dfs;
         }
 
 
@@ -450,7 +452,7 @@ namespace ConsoleApp1.Solutions
             public Point end;
             public Point maxBounds;
 
-            public static Int64 NumCreatedSims;
+            public static UInt64 NumCreatedSims;
 
             public int score;
             public int step;
