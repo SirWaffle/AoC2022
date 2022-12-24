@@ -201,8 +201,8 @@ namespace ConsoleApp1.Solutions
                     }
                 }
 
-                //if (curSim.step > depthLimit)
-                //    continue;
+                if (curSim.step > depthLimit)
+                    continue;
 
                 //if we are next to the end, we have arrived...
                 //the correct spot is one above the end pos
