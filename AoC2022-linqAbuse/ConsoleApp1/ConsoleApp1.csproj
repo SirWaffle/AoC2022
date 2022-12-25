@@ -29,6 +29,12 @@
     <None Update="InputFiles\input18_1.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="InputFiles\input25_1_ex.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="InputFiles\input25_1.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="InputFiles\input24_1_ex2.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
