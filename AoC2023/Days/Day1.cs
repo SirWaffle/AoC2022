@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -11,7 +12,7 @@ namespace AoC2023.Solutions
 {
     internal class Day1: AbstractPuzzle<Day1>
     {
-        public Day1()
+        public override void Init()
         {
             DoPart1 = false;
             DoPart2 = true;
