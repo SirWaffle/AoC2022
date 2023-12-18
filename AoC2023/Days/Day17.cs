@@ -3,9 +3,11 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Linq;
@@ -68,6 +70,17 @@ namespace AoC2023.Solutions
 
             public Point()
             { }
+
+            public override string ToString()
+            {
+                string str = String.Format("{0:X}", heatLoss);
+                if (str.Length >= 4)
+                    str = " ";
+
+                while (str.Length < 4)
+                    str += " ";
+                return str;
+            }
 
             public Point Set(Point o)
             {
@@ -142,7 +155,7 @@ namespace AoC2023.Solutions
         //0 = +y, 1 = +x, 2 = -y, 3 = -x
         List<List<List<Point>>> visitedByDir = new();
 
-        int minHeatLoss = 1000; // int.MaxValue; //876 too high? i think?; //800 too low
+        int minHeatLoss = int.MaxValue; //1000; // int.MaxValue; //876 too high? i think?; //800 too low
         //882 wrong
 
         private void ProccessSingleItem(Point workItem, Point target)
@@ -165,7 +178,8 @@ namespace AoC2023.Solutions
 
 
             if (minHeatLoss < workItem.heatLoss
-                || visitedByDir[workItem.GetDir()][workItem.y][workItem.x].heatLoss < workItem.heatLoss)
+                //|| visitedByDir[workItem.GetDir()][workItem.y][workItem.x].heatLoss < workItem.heatLoss)
+                || visitedByDir[0][workItem.y][workItem.x].heatLoss < workItem.heatLoss)
             {
                 pointPool.Return(workItem);
                 return;
@@ -217,9 +231,9 @@ namespace AoC2023.Solutions
                 {
                     //update visited nodes
                     //the visited nodes is culling things we should search, something is off here..ohh, the straight line crap might make it wonky?
-                    if (visitedByDir[searchItem.GetDir()][searchItem.y][searchItem.x].heatLoss >= searchItem.heatLoss)
+                    if (visitedByDir[0][searchItem.y][searchItem.x].heatLoss >= searchItem.heatLoss)
                     {
-                        visitedByDir[searchItem.GetDir()][searchItem.y][searchItem.x] = searchItem;
+                        visitedByDir[0][searchItem.y][searchItem.x] = searchItem;
 
                         if (searchItem.x == target.x && searchItem.y == target.y)
                         {
@@ -230,7 +244,8 @@ namespace AoC2023.Solutions
                                 minHeatLoss = searchItem.heatLoss;
 
                                 solutions = solutions.OrderBy(x => x.heatLoss).ToList();
-                                Visualize(map, solutions.First(), allWork);
+                                //Visualize(map, solutions.First(), allWork);
+                                Visualize(map, visitedByDir[0], solutions.First(), allWork);
                                 Console.WriteLine("Lowest cost heat loss: " + solutions.First().heatLoss + " after " + solutions.First().steps);
                             }
                         }
@@ -268,8 +283,9 @@ namespace AoC2023.Solutions
                     Console.WriteLine("All work remaining: " + allWork.Count);
 
                     logCount = 0;
-                    Visualize(map, solutions.Count() > 0 ? solutions.First() : new Point(), null);
-                    if(solutions.Count() > 0)
+                    Visualize(map, visitedByDir[0], solutions.Count() > 0 ? solutions.First() : new Point(), null);
+                    //Visualize(map, solutions.Count() > 0 ? solutions.First() : new Point(), null);
+                    if (solutions.Count() > 0)
                         Console.WriteLine("Lowest cost heat loss: " + solutions.First().heatLoss + " after " + solutions.First().steps);
                 }
 
@@ -284,10 +300,22 @@ namespace AoC2023.Solutions
 
             Visualize(map, solutions.First(), allWork);            
         }
+
+        List<(int, ConsoleColor)> outputColors = new List<(int, ConsoleColor)>()
+        {
+            { (750, ConsoleColor.Green) },
+            { (800, ConsoleColor.White) },
+            { (850, ConsoleColor.Cyan) },
+            { (875, ConsoleColor.Gray) },
+            { (900, ConsoleColor.DarkGray) },
+            { (950, ConsoleColor.Red) },
+            { (1000, ConsoleColor.Magenta) },
+        };
+
         private void Visualize(List<List<int>> map, Point? path, List<Point>? allWork)
         {
             List<Point>? allPaths = null;
-            if(allWork != null)
+            if (allWork != null)
                 allWork.SelectMany(l => l.prevPoints).DistinctBy(p => p.x + (p.y * 10000)).ToList();
 
             Console.SetCursorPosition(0, 0);
@@ -301,7 +329,7 @@ namespace AoC2023.Solutions
                     {
                         Console.BackgroundColor = ConsoleColor.Yellow;
                     }
-                    else if (allPaths !=null && allPaths.Any(p => p.x == x && p.y == y))
+                    else if (allPaths != null && allPaths.Any(p => p.x == x && p.y == y))
                     {
                         Console.BackgroundColor = ConsoleColor.Red;
                     }
@@ -312,13 +340,65 @@ namespace AoC2023.Solutions
                     }
                     */
 
-                    Console.Write(map[y][x]);
+                    Console.Write(map[y][x].ToString());
                 }
                 Console.BackgroundColor = ConsoleColor.Black;
                 Console.WriteLine();
             }
-
         }
+
+        private void Visualize(List<List<int>> map, List<List<Point>> visited, Point? path, List<Point>? allWork)
+        {
+            List<Point>? allPaths = null;
+            if (allWork != null)
+                allWork.SelectMany(l => l.prevPoints).DistinctBy(p => p.x + (p.y * 10000)).ToList();
+
+            Console.SetCursorPosition(0, 0);
+            for (int y = 0; y < map.Count; y++)
+            {
+                for (int x = 0; x < map[y].Count; x++)
+                {
+                    Console.BackgroundColor = ConsoleColor.Black;
+
+                    if (path != null && path.Value.prevPoints.Any(p => p.x == x && p.y == y))
+                    {
+                        Console.BackgroundColor = ConsoleColor.Yellow;
+                    }
+                    else if (allPaths != null && allPaths.Any(p => p.x == x && p.y == y))
+                    {
+                        Console.BackgroundColor = ConsoleColor.Red;
+                    }
+                    /*
+                    else if (allWork.Any(p => p.x == x && p.y == y))
+                    {
+                        Console.BackgroundColor = ConsoleColor.Green;
+                    }
+                    */
+
+                    if (visited[y][x].heatLoss == int.MaxValue)
+                        Console.BackgroundColor = ConsoleColor.DarkGreen;
+                    else
+                    {
+                        for (int i = 1; i < outputColors.Count; i++)
+                        {
+                            if (outputColors[i].Item1 > visited[y][x].heatLoss)
+                            {
+                                Console.BackgroundColor = outputColors[i - 1].Item2;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (x == map[y].Count - 1 && y == map.Count - 1)
+                        Console.BackgroundColor = ConsoleColor.Yellow;
+
+                    Console.Write(map[y][x].ToString());
+                }
+                Console.BackgroundColor = ConsoleColor.Black;
+                Console.WriteLine();
+            }
+        }
+
 
 
         override public void Part2Impl()
