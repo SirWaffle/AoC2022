@@ -104,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -130,15 +130,29 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AoC2023_cpp.cpp" />
+    <ClCompile Include="LANQDataRefs.h" />
+    <ClCompile Include="LANQEnumerableRange.h" />
+    <ClCompile Include="LANQInterfaces.h" />
+    <ClCompile Include="LANQLStr.h" />
+    <ClCompile Include="LANQUtils.h" />
     <ClCompile Include="Parallel.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Day23.h" />
+    <ClInclude Include="Day24.h" />
+    <ClInclude Include="Day25.h" />
+    <ClInclude Include="DayBase.h" />
+    <ClInclude Include="LANQBinaryVec.h" />
     <ClInclude Include="CommonHeaders.h" />
     <ClInclude Include="Day18.h" />
     <ClInclude Include="Day19.h" />
     <ClInclude Include="Day20.h" />
     <ClInclude Include="Day21.h" />
+    <ClInclude Include="Day22.h" />
     <ClInclude Include="LANQ.h" />
+    <ClInclude Include="LANQCommonHeaders.h" />
+    <ClInclude Include="LANQEnumerable.h" />
+    <ClInclude Include="LANQTraitsAndConcepts.h" />
     <ClInclude Include="PointsNStuff.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

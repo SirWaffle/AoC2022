@@ -15,5 +15,6 @@
 #include <unordered_set>
 #include <queue>
 
+#include "DayBase.h"
 #include "LANQ.h"
 #include "PointsNStuff.h"

@@ -21,7 +21,7 @@ class Day19
 public:
 	void Run()
 	{
-		DoPart1();
+		//DoPart1();
 		DoPart2();
 	}
 
@@ -73,6 +73,7 @@ public:
 			case '>': return Result<std::string>(i.props[prop] > val, res);
 			case '<': return Result<std::string>(i.props[prop] < val, res);
 			}
+			assert(false);
 		}
 	};
 
@@ -84,6 +85,7 @@ public:
 
 		WorkFlow() = default;
 		WorkFlow(std::string _name) :name(_name) {}
+		WorkFlow(std::string _name, LVec<Rule> _rules) :name(_name), rules(_rules) {}
 	};
 
 	void DoPart1()
@@ -91,62 +93,49 @@ public:
 		LVec<LStr> input = ReadWholeFile(GetFileName()).Split("\n\n");
 
 		LVec<Item> parts = input[1].Split("\n").Select<Item>([](const LStr& item, int ind) {
-			auto ints = item.Remove("{").Remove("}").Split(",").Select<int>([](const LStr& item, int ind) { return item.Split("=")[1].AsInt(); });
-			return Item{ { ints[0], ints[1], ints[2], ints[3] } };
+				auto ints = item.Remove("{").Remove("}").Split(",").Select<int>([](const LStr& item, int ind) { return item.Split("=")[1].ToInt(); });
+				return Item{ { ints[0], ints[1], ints[2], ints[3] } };
 			});
 
-		LVec<WorkFlow> workflows = input[0].Split("\n").Select<WorkFlow>([](const LStr& item, int ind) {
-			WorkFlow s;
-			s.name = item.Split("{")[0];
-			s.rules = item.Remove("}").Split("{")[1].Split(",").Select<Rule>([](const LStr& item, int ind) { return Rule(item); });
-			return s;
-			});
-
-		auto workflowMap = workflows.Add(WorkFlow("A")).Add(WorkFlow("R")).ToUnorderedMap<std::string>([](const WorkFlow& item) { return item.name; });
+		std::shared_ptr<std::unordered_map<std::string, WorkFlow>> 
+			workflowMap = input[0].Split("\n").Select<WorkFlow>([](const LStr& item, int ind) {
+					return WorkFlow(item.Split("{")[0], 
+									item.Remove("}").Split("{")[1].Split(",").Select<Rule>([](const LStr& item, int ind) { return Rule(item); }));
+				})
+				.Add(WorkFlow("A")).Add(WorkFlow("R")).ToSharedUnorderedMap<std::string>([](const WorkFlow& item) { return item.name; });
 
 		//now that we have parsed, do work
 		//put items into proper workflow queues, loop until queues are empty
-		for (auto const& part : parts.Data())
+		for (auto const& part : parts.GetContainer())
 			(*workflowMap)["in"].stack.push_back(part);
 
 		bool hasWork = true;
 		while (hasWork)
 		{
-			bool didWork = false;
+			hasWork = false;
 			for (auto& pairs : *workflowMap)
 			{
-				while (pairs.second.stack.size() > 0 && pairs.second.rules.Data().size()) //no rules means our dead end container, A, R
+				while (pairs.second.stack.size() > 0 && pairs.second.rules.GetContainer().size()) //no rules means our dead end container, A, R
 				{
 					Item i = pairs.second.stack.back();
 					pairs.second.stack.pop_back();
 
-					for (auto const& rule : pairs.second.rules.Data())
+					for (auto const& rule : pairs.second.rules.GetContainer())
 					{
-						auto result = rule.Process(i);
-						if (result.Success())
-						{
-							didWork = true;
-							(*workflowMap)[result.GetSuccessResult()].stack.push_back(i);
+						if (rule.Process(i).OnSuccess([&hasWork, &workflowMap, &i](std::string& res) { hasWork = true; (*workflowMap)[res].stack.push_back(i); }).Success())
 							break;
-						}
 					}
 				}
 			}
-
-			hasWork = didWork;
 		}
 
-		//todo: this crashes due to ownership of the vector in stack. need to make more utils that copy, or dont attempt to take ownership
+		//todo: this crashes on exit due to ownership of the vector in stack. need to make more utils that copy, or dont attempt to take ownership
 		LVec<Item> accepted( &(*workflowMap)["A"].stack );
-
-		unsigned int total = accepted.Aggregate<unsigned int>(0, [](const unsigned int a, const Item& item) { return a + item.props[0] + item.props[1] + item.props[2] + item.props[3]; });
-
-		std::cout << "done! value: " << total << "\n";
+		std::cout << "done! value: " << accepted.Aggregate<unsigned int>(0, [](const unsigned int a, const Item& item) { return a + item.props[0] + item.props[1] + item.props[2] + item.props[3]; }) << "\n";
 		//p1: 449531
 	}
 
 	void DoPart2()
 	{
-
 	}
 };

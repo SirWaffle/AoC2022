@@ -16,6 +16,9 @@
     <Filter Include="Utils">
       <UniqueIdentifier>{2c601c6b-0479-4e96-84c1-7ec0dff0cf9a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="LANQ">
+      <UniqueIdentifier>{00010b92-27ae-4550-be67-ad54964c13f7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AoC2023_cpp.cpp">
@@ -24,13 +27,25 @@
     <ClCompile Include="Parallel.h">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="LANQEnumerableRange.h">
+      <Filter>LANQ</Filter>
+    </ClCompile>
+    <ClCompile Include="LANQInterfaces.h">
+      <Filter>LANQ</Filter>
+    </ClCompile>
+    <ClCompile Include="LANQDataRefs.h">
+      <Filter>LANQ</Filter>
+    </ClCompile>
+    <ClCompile Include="LANQUtils.h">
+      <Filter>LANQ</Filter>
+    </ClCompile>
+    <ClCompile Include="LANQLStr.h">
+      <Filter>LANQ</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Day18.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="LANQ.h">
-      <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="Day19.h">
       <Filter>Header Files</Filter>
@@ -46,6 +61,36 @@
     </ClInclude>
     <ClInclude Include="PointsNStuff.h">
       <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="LANQ.h">
+      <Filter>LANQ</Filter>
+    </ClInclude>
+    <ClInclude Include="Day22.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LANQBinaryVec.h">
+      <Filter>LANQ</Filter>
+    </ClInclude>
+    <ClInclude Include="LANQCommonHeaders.h">
+      <Filter>LANQ</Filter>
+    </ClInclude>
+    <ClInclude Include="LANQEnumerable.h">
+      <Filter>LANQ</Filter>
+    </ClInclude>
+    <ClInclude Include="LANQTraitsAndConcepts.h">
+      <Filter>LANQ</Filter>
+    </ClInclude>
+    <ClInclude Include="Day23.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Day24.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Day25.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DayBase.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

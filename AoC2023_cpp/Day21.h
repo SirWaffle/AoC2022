@@ -26,7 +26,7 @@ public:
 
 	struct Point
 	{
-		PointsNStuff::Vec2 pos;
+		PointsNStuff::Vec3 pos;
 		char c;
 
 		std::uint64_t Hash() const { return (pos.y * 100000 + pos.x); }
@@ -34,7 +34,7 @@ public:
 
 	struct Step
 	{
-		PointsNStuff::Vec2 pos;
+		PointsNStuff::Vec3 pos;
 		int stepNum = 0;
 
 		Step() = default;
@@ -52,7 +52,7 @@ public:
 					} );
 			} );
 		
-		auto map = input.Flatten<LVec<Point>>().ToUnorderedMap<std::uint64_t>([](const Point& p) { return p.Hash(); });
+		auto map = input.Flatten<LVec<Point>>().ToSharedUnorderedMap<std::uint64_t>([](const Point& p) { return p.Hash(); });
 
 
 		Point startPoint = input.Flatten<LVec<Point>>().Where([](const Point& p, int i) { return p.c == 'S'; }).First();
