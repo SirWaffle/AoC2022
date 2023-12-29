@@ -20,6 +20,15 @@ protected:
 	}
 
 public:
+
+	std::chrono::steady_clock::time_point m_startTime;
+
+	void Start()
+	{
+		m_startTime = std::chrono::high_resolution_clock::now();
+		Run();
+	}
+
 	virtual void Run() = 0;
 
 	void WriteLine(std::string str)

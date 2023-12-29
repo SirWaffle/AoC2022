@@ -2,28 +2,29 @@
 
 namespace PointsNStuff
 {
-	struct Vec3
+	template<typename Type>
+	struct Vector3
 	{
-		int x = 0;
-		int y = 0;
-		int z = 0;
+		Type x = 0;
+		Type y = 0;
+		Type z = 0;
 
-		Vec3() = default;
-		Vec3(const Vec3& other) = default;
-		Vec3(const int _x, const int _y = 0, const int _z = 0) : x(_x), y(_y), z(_z) {}
-		Vec3(const std::vector<int>& a) : x(a[0]), y(a[1]), z(a[2]) { }
+		Vector3() = default;
+		Vector3(const Vector3& other) = default;
+		Vector3(const Type _x, const Type _y = 0, const Type _z = 0) : x(_x), y(_y), z(_z) {}
+		Vector3(const std::vector<Type>& a) : x(a[0]), y(a[1]), z(a[2]) { }
 
-		bool operator==(const Vec3& o) const
+		bool operator==(const Vector3<Type>& o) const
 		{
 			return x == o.x && y == o.y && z == o.z;
 		}
 
-		bool operator!=(const Vec3& o) const
+		bool operator!=(const Vector3<Type>& o) const
 		{
 			return !(*this == o);
 		}
 
-		Vec3& operator+(const Vec3& o)
+		Vector3<Type>& operator+(const Vector3<Type>& o)
 		{
 			x += o.x;
 			y += o.y;
@@ -31,10 +32,20 @@ namespace PointsNStuff
 			return *this;
 		}
 
+		Vector3<Type>& operator*(const Vector3<Type>& o)
+		{
+			x *= o.x;
+			y *= o.y;
+			z *= o.z;
+			return *this;
+		}
+
 		//lame hash
-		std::uint64_t HashVec3() const { return (x)+(y * 1000000) + (z * 1000000000000); }
-		std::uint64_t HashVec2() const { return (x)+(y * 1000000); }
+		inline std::uint64_t HashVec3() const { return (x)+(y * 1000000) + (z * 1000000000000); }
+		inline std::uint32_t HashVec2() const { return (x)+(y * 1000000); }
 	};
+
+	typedef Vector3<int> Vec3;
 
 	struct Bounds
 	{
@@ -65,7 +76,7 @@ namespace PointsNStuff
 			max.z = std::max(max.z, v.z);
 		}
 
-		bool InclusiveInBounds(const Vec3& v)
+		inline bool InclusiveInBounds(const Vec3& v) const
 		{
 			bool x = v.x >= min.x && v.x <= max.x;
 			bool y = v.y >= min.y && v.y <= max.y;
@@ -76,14 +87,16 @@ namespace PointsNStuff
 	};
 
 
-	std::int64_t Distance(const Vec3& a, const Vec3& b)
+	template<typename Type>
+	Type Distance(const Vector3<Type>& a, const Vector3<Type>& b)
 	{
 		return std::abs(b.x - a.x) + std::abs(b.y - a.y) + std::abs(b.z - a.z);
 	}
 
-	Vec3 ComponentWiseDistance(const Vec3& a, const Vec3& b)
+	template<typename Type>
+	Vector3<Type> ComponentWiseDistance(const Vector3<Type>& a, const Vector3<Type>& b)
 	{
-		Vec3 v;
+		Vector3<Type> v;
 		v.x = std::abs(b.x - a.x);
 		v.y = std::abs(b.y - a.y);
 		v.z = std::abs(b.z - a.z);

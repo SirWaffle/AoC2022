@@ -19,6 +19,9 @@
     <Filter Include="LANQ">
       <UniqueIdentifier>{00010b92-27ae-4550-be67-ad54964c13f7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Threading">
+      <UniqueIdentifier>{f9160672-31d0-4e0c-9053-7e98632a9caf}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AoC2023_cpp.cpp">
@@ -41,6 +44,15 @@
     </ClCompile>
     <ClCompile Include="LANQLStr.h">
       <Filter>LANQ</Filter>
+    </ClCompile>
+    <ClCompile Include="ThreadPipelineQueueWorker.h">
+      <Filter>Threading</Filter>
+    </ClCompile>
+    <ClCompile Include="ThreadQueueWorker.h">
+      <Filter>Threading</Filter>
+    </ClCompile>
+    <ClCompile Include="LockablePriorityQueue.h">
+      <Filter>Threading</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -91,6 +103,18 @@
     </ClInclude>
     <ClInclude Include="DayBase.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadPool.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="LockableQueue.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="LockableRingBuffer.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="LockableStack.h">
+      <Filter>Threading</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

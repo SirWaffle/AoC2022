@@ -10,8 +10,8 @@
 
 int main()
 {
-    Day23 day;
+    Day20 day;
 
-    day.Run();
+    day.Start();
 }
 

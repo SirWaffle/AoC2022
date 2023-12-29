@@ -8,13 +8,15 @@ namespace LANQ
 	template<typename T>
 	static LVec<T> LANQit(const std::vector<T>& v)
 	{
-		return LVec<T>(v);
+		//TODO: nopt sure about this, mayb eownership problems?
+		return LVec<T>(&v);
 	}
 
 	template<typename K, typename V>
 	static LUMap<K,V> LANQit(const std::unordered_map<K,V>& v)
 	{
-		return LUMap<K,V>(v);
+		//todo, not sure about this, potential ownership problems?
+		return LUMap<K,V>(&v);
 	}
 
 	template<typename K, typename V>

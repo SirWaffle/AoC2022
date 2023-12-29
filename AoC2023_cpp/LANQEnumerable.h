@@ -3,6 +3,7 @@
 #include "LANQCommonHeaders.h"
 #include "LANQInterfaces.h"
 #include "LANQTraitsAndConcepts.h"
+#include <map>
 
 namespace LANQ
 {
@@ -133,12 +134,32 @@ typename std::enable_if<has_const_iterator<Container>::value, void>::type
 			return ptr;
 		}
 
+		template<typename Key>
+		std::multimap<Key, value_type> ToMultiMap(std::function<Key(const value_type& item)> selector)
+		{
+			std::multimap<Key, value_type> m;
+			for (auto& val : *m_container)
+				m.insert({ selector(val), val });
+
+			return m;
+		}
+
+		//need too multimap stuff
+
 		bool Any(std::function<bool(const value_type& item)> selector)
 		{
 			for (auto& val : *m_container)
 				if (selector(val))
 					return true;
 			return false;
+		}
+
+		bool All(std::function<bool(const value_type& item)> selector)
+		{
+			for (auto& val : *m_container)
+				if (!selector(val))
+					return false;
+			return true;
 		}
 
 		template<typename selectedType>
@@ -151,6 +172,30 @@ typename std::enable_if<has_const_iterator<Container>::value, void>::type
 			int ind = 0;
 			for (auto& val : *m_container)
 				outData.push_back(selector(val, ind++));
+
+			return out;
+		}
+
+
+		template<std::uint32_t ChunkSize>
+		LVec<std::array<value_type, ChunkSize>> Chunk()
+		{
+			LVec<std::array<value_type, ChunkSize>> out(new std::vector<std::array<value_type, ChunkSize>>());
+			auto& outData = out.GetMutableContainer();
+			
+			std::array<value_type, ChunkSize> arr;
+
+			int chunkCount = 0;
+			for (auto& val : *m_container)
+			{
+				arr[chunkCount] = val;
+
+				++chunkCount;
+				if (chunkCount == ChunkSize)
+				{
+					outData.push_back(val);
+				}					
+			}
 
 			return out;
 		}
@@ -177,6 +222,16 @@ typename std::enable_if<has_const_iterator<Container>::value, void>::type
 				agg = selector(agg, val);
 
 			return agg;
+		}
+
+		template<typename Key>
+		LUMap<Key, LVec<value_type>> GroupBy(std::function<Key(const value_type& item)> selector)
+		{
+			LUMap<Key, LVec<value_type>> m;
+			for (auto& val : *m_container)
+				m.GetMutableContainer()[selector(val)].Add(val);
+
+			return m;
 		}
 
 		template<typename T = std::is_base_of_v<IEnumerable, value_type>>
@@ -209,6 +264,21 @@ typename std::enable_if<has_const_iterator<Container>::value, void>::type
 					outData.push_back(selectedVal);
 				}
 			}
+			return out;
+		}
+
+
+
+		//mutable modifications, not many of these
+		LVec<value_type> ForEach(std::function<value_type(const value_type& item, const int& ind)> selector)
+		{
+			LVec<value_type> out(new vectorType());
+			auto& outData = out.GetMutableContainer();
+
+			int ind = 0;
+			for (auto& val : *m_container)
+				outData.push_back(selector(val, ind++));
+
 			return out;
 		}
 	};
@@ -259,6 +329,7 @@ typename std::enable_if<has_const_iterator<Container>::value, void>::type
 	class LUMap : public EnumerableBase<std::unordered_map<K, V>>
 	{
 	public:
+		using parent = EnumerableBase<std::unordered_map<K, V>>;
 		using type = std::unordered_map<K, V>;
 		using value_type = typename type::value_type;
 
@@ -276,6 +347,40 @@ typename std::enable_if<has_const_iterator<Container>::value, void>::type
 		//LUnorderedMap(const type&& t)
 		//	:EnumerableBase<type>(t)
 		//{}
+
+		const V& operator[](K ind) const
+		{
+			return parent::GetMutableContainer()[ind];
+		}
+	};
+
+	template<typename K, typename V>
+	class LMMap : public EnumerableBase<std::multimap<K, V>>
+	{
+	public:
+		using parent = EnumerableBase<std::multimap<K, V>>;
+		using type = std::multimap<K, V>;
+		using value_type = typename type::value_type;
+
+		LMMap() :EnumerableBase<type>()
+		{}
+
+		LMMap(const std::shared_ptr<type> t)
+			:EnumerableBase<type>(t)
+		{}
+
+		LMMap(const type* t)
+			:EnumerableBase<type>(t)
+		{}
+
+		//LUnorderedMap(const type&& t)
+		//	:EnumerableBase<type>(t)
+		//{}
+
+		const V& operator[](K ind) const
+		{
+			return parent::GetMutableContainer()[ind];
+		}
 	};
 
 };

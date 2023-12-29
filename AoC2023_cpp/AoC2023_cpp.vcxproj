@@ -116,10 +116,15 @@
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
+      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,7 +140,10 @@
     <ClCompile Include="LANQInterfaces.h" />
     <ClCompile Include="LANQLStr.h" />
     <ClCompile Include="LANQUtils.h" />
+    <ClCompile Include="LockablePriorityQueue.h" />
     <ClCompile Include="Parallel.h" />
+    <ClCompile Include="ThreadPipelineQueueWorker.h" />
+    <ClCompile Include="ThreadQueueWorker.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Day23.h" />
@@ -153,7 +161,11 @@
     <ClInclude Include="LANQCommonHeaders.h" />
     <ClInclude Include="LANQEnumerable.h" />
     <ClInclude Include="LANQTraitsAndConcepts.h" />
+    <ClInclude Include="LockableQueue.h" />
+    <ClInclude Include="LockableRingBuffer.h" />
+    <ClInclude Include="LockableStack.h" />
     <ClInclude Include="PointsNStuff.h" />
+    <ClInclude Include="ThreadPool.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
