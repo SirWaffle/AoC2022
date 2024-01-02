@@ -40,6 +40,23 @@ namespace PointsNStuff
 			return *this;
 		}
 
+		//lazy ops
+		Vector3<Type>& Ortho2D()
+		{
+			Type t = y;
+			y = x;
+			x = t;
+			return *this;
+		}
+
+		Vector3<Type>& Invert()
+		{
+			x = -1 * x;
+			y = -1 * y;
+			z = -1 * z;
+			return *this;
+		}
+
 		//lame hash
 		inline std::uint64_t HashVec3() const { return (x)+(y * 1000000) + (z * 1000000000000); }
 		inline std::uint32_t HashVec2() const { return (x)+(y * 1000000); }
@@ -103,14 +120,14 @@ namespace PointsNStuff
 		return v;
 	}
 
-	int ClampToOne(int i)
+	static int ClampToOne(int i)
 	{
 		if (i > 0) return 1;
 		if (i < 0) return -1;
 		return 0;
 	}
 
-	Vec3 ClampToOnes(const Vec3& v)
+	static Vec3 ClampToOnes(const Vec3& v)
 	{
 		return Vec3(ClampToOne(v.x), ClampToOne(v.y), ClampToOne(v.z));
 	}

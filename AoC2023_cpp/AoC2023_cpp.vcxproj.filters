@@ -54,6 +54,9 @@
     <ClCompile Include="LockablePriorityQueue.h">
       <Filter>Threading</Filter>
     </ClCompile>
+    <ClCompile Include="Day17.h">
+      <Filter>Header Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Day18.h">

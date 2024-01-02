@@ -19,6 +19,18 @@ protected:
 		return path;
 	}
 
+	std::string GetSampleFileName_2()
+	{
+		std::string path = std::format("..\\Input\\AoC{}\\Day{}_sample2.txt", std::to_string(Y), std::to_string(D));
+		return path;
+	}
+
+	std::string GetFileName_2()
+	{
+		std::string path = std::format("..\\Input\\AoC{}\\Day{}_2.txt", std::to_string(Y), std::to_string(D));
+		return path;
+	}
+
 public:
 
 	std::chrono::steady_clock::time_point m_startTime;
